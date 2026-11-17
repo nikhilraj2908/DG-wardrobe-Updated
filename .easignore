@@ -1,0 +1,11 @@
+node_modules
+.expo
+.git
+android
+ios
+myfirstapp-zip.zip
+build
+.gradle
+*.zip
+*.tar.gz
+

@@ -16,6 +16,7 @@ import {
   View
 } from "react-native";
 import api from "../api/api";
+import ReportModal from "./ReportModal";
 
 const { width } = Dimensions.get('window');
 const BASE_URL = "https://api.digiwardrobe.com";
@@ -60,6 +61,8 @@ export default function WardrobePostCard({ item, onUpdate }: WardrobePostCardPro
   const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
   
   // Dynamic values from props
   const totalItems = item.itemCount || 0;
@@ -290,6 +293,8 @@ export default function WardrobePostCard({ item, onUpdate }: WardrobePostCardPro
     </TouchableOpacity>
   );
 
+  if (isHidden) return null;
+
   return (
     <View style={styles.container}>
       {/* Post Header */}
@@ -306,7 +311,7 @@ export default function WardrobePostCard({ item, onUpdate }: WardrobePostCardPro
           </View>
         </View>
         
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowReportModal(true)}>
           <Ionicons name="ellipsis-horizontal" size={20} color="#666" />
         </TouchableOpacity>
       </View>
@@ -552,6 +557,19 @@ export default function WardrobePostCard({ item, onUpdate }: WardrobePostCardPro
           </View>
         </View>
       </Modal>
+
+      {/* Report & Block Action Modal */}
+      <ReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        targetType="wardrobe"
+        targetId={item._id}
+        authorUsername={item.user?.username}
+        authorId={item.user?._id}
+        isOwner={false}
+        onReportSuccess={() => setIsHidden(true)}
+        onBlockUser={() => setIsHidden(true)}
+      />
     </View>
   );
 }

@@ -23,6 +23,7 @@ import api from "../api/api";
 import { useFollow } from "../context/FollowContext";
 import { useSavedItems } from "../context/SavedItemsContext";
 import { useTheme } from "@/app/theme/ThemeContext";
+import ReportModal from "./ReportModal";
 
 const { width } = Dimensions.get('window');
 
@@ -72,6 +73,7 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
   const [activeIndex, setActiveIndex] = useState(0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [imageRatios, setImageRatios] = useState<Record<string, number>>({});
+  const [isHidden, setIsHidden] = useState(false);
 
   const { isFollowing, toggleFollow, ready } = useFollow();
   const ownerId = typeof item.user === "string" ? item.user : item.user?._id;
@@ -346,6 +348,8 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
       </View>
     );
   };
+
+  if (isHidden) return null;
 
   return (
     <>
@@ -644,37 +648,19 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
         </TouchableOpacity>
       </Modal>
 
-      {/* Delete Menu Modal */}
-      {menuVisible && (
-        <TouchableOpacity
-          activeOpacity={1}
-          style={styles.menuOverlay}
-          onPress={() => setMenuVisible(false)}
-        >
-          <View style={[styles.menuBox, { backgroundColor: colors.surface }]}>
-            <TouchableOpacity
-              style={[styles.menuItem, !isOwner && styles.menuItemDisabled]}
-              disabled={!isOwner || deleting}
-              onPress={isOwner ? handleDeleteItem : undefined}
-            >
-              <Ionicons
-                name="trash-outline"
-                size={18}
-                color={isOwner ? colors.danger : colors.textMuted}
-              />
-              <Text
-                style={[
-                  styles.menuText,
-                  !isOwner && styles.menuTextDisabled,
-                  { color: isOwner ? colors.danger : colors.textMuted },
-                ]}
-              >
-                Delete
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      )}
+      {/* Report, Block & Owner Action Modal (Google Play Store UGC Compliance) */}
+      <ReportModal
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        targetType="item"
+        targetId={item._id}
+        authorUsername={typeof item.user === "object" ? item.user?.username : "user"}
+        authorId={ownerId ? String(ownerId) : undefined}
+        isOwner={Boolean(isOwner)}
+        onDelete={handleDeleteItem}
+        onReportSuccess={() => setIsHidden(true)}
+        onBlockUser={() => setIsHidden(true)}
+      />
     </>
   );
 }
