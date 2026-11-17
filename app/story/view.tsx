@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ResizeMode, Video } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -23,6 +23,32 @@ import { resolveImageUrl } from "@/utils/resolveImageUrl";
 
 const { width } = Dimensions.get("window");
 
+function StoryVideo({ uri, paused, style }: { uri: string; paused: boolean; style: any }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = false;
+    p.play();
+  });
+
+  useEffect(() => {
+    if (paused) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  }, [paused, player]);
+
+  return (
+    <VideoView
+      style={style}
+      player={player}
+      allowsFullscreen={false}
+      allowsPictureInPicture={false}
+      nativeControls={false}
+      contentFit="contain"
+    />
+  );
+}
+
 export default function StoryView() {
   const router = useRouter();
   const { index } = useLocalSearchParams();
@@ -37,8 +63,6 @@ export default function StoryView() {
   const [viewersModalVisible, setViewersModalVisible] = useState(false);
   const [viewersList, setViewersList] = useState<any[]>([]);
   const [loadingViewers, setLoadingViewers] = useState(false);
-
-  const videoRef = useRef<Video>(null);
 
   // Load stories and current user ID
 useEffect(() => {
@@ -245,14 +269,7 @@ useEffect(() => {
           {story.mediaType === "image" ? (
             <Image source={{ uri: mediaUrl }} style={styles.media} />
           ) : (
-            <Video
-              ref={videoRef}
-              source={{ uri: mediaUrl }}
-              style={styles.media}
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay={!paused}
-              isLooping={false}
-            />
+            <StoryVideo uri={mediaUrl} paused={paused} style={styles.media} />
           )}
         </Pressable>
 
