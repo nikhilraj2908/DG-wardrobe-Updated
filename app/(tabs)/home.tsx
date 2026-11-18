@@ -3,8 +3,8 @@ import AppBackground from "@/components/AppBackground";
 import ItemPostCard from "@/components/ItemPostCard";
 import SearchModal from "@/components/SearchModal";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
+import { storage } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -80,7 +80,7 @@ export default function HomeScreen() {
 
   const loadStories = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       const res = await api.get("/api/story", {
@@ -98,7 +98,7 @@ export default function HomeScreen() {
 
   const loadMe = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       const res = await api.get("/api/user/me", {
@@ -115,7 +115,7 @@ export default function HomeScreen() {
 
   const loadNotificationsCount = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       const res = await api.get("/api/notifications", {
