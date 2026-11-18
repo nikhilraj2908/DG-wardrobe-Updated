@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   StyleSheet,
   View,
 } from "react-native";
@@ -16,10 +17,11 @@ export default function Wardrobe() {
   const router = useRouter();
   const { theme } = useTheme();                         // <-- get current theme
   const colors = theme.colors;
-        const styles = React.useMemo(() => createStyles(colors), [colors]);
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
 
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   const [sortBy, setSortBy] = useState<
     "worth" | "alpha" | "views"
@@ -41,15 +43,21 @@ export default function Wardrobe() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadCollections();
+    setRefreshing(false);
+  };
+
   /* ================= SORTING ================= */
 
   const sortedCollections = [...collections].sort((a, b) => {
     if (sortBy === "worth") {
-      return b.stats.totalWorth - a.stats.totalWorth;
+      return (b.stats?.totalWorth || 0) - (a.stats?.totalWorth || 0);
     }
 
     if (sortBy === "alpha") {
-      return a.user.username.localeCompare(b.user.username);
+      return (a.user?.username || "").localeCompare(b.user?.username || "");
     }
 
     if (sortBy === "views") {
@@ -71,7 +79,6 @@ export default function Wardrobe() {
           onSort={setSortBy}
         />
 
-
         <FlatList
           data={sortedCollections}
           keyExtractor={(item) => item._id}
@@ -80,8 +87,16 @@ export default function Wardrobe() {
           )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
           ListFooterComponent={
-            loading ? (
+            loading && !refreshing ? (
               <ActivityIndicator
                 size="small"
                 color={colors.primary}
