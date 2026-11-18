@@ -5,7 +5,7 @@ import * as AuthSession from "expo-auth-session";
 import Constants from "expo-constants";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Alert, View } from "react-native";
 
 const { AUTH0_DOMAIN, AUTH0_CLIENT_ID } = Constants.expoConfig.extra;
 const API_URL = Constants.expoConfig.extra.apiBaseUrl;
@@ -81,10 +81,16 @@ export default function Callback() {
                     router.replace("/(auth)/complete-profile"); // Redirect to complete profile page
                 }
 
-            } catch (err) {
+            } catch (err: any) {
                 console.log("❌ Callback error:", err);
                 setAuthInProgress(false);
-                router.replace("/(auth)/welcome");
+                const errorMsg =
+                    err?.response?.data?.message ||
+                    err?.message ||
+                    "Could not connect to backend server.";
+                Alert.alert("Login Failed", `${errorMsg}\n\nEndpoint: ${API_URL}/api/auth/google`, [
+                    { text: "OK", onPress: () => router.replace("/(auth)/welcome") }
+                ]);
             }
         };
 

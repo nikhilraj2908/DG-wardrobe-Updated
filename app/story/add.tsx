@@ -1,5 +1,6 @@
 import ImagePicker from 'react-native-image-crop-picker';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
@@ -182,57 +183,30 @@ export default function AddStory() {
         throw new Error("Failed to create form data");
       }
 
-      console.log("🚀 Uploading to:", `${API_URL}/api/story`);
+      console.log("🚀 Uploading story to:", `${API_URL}/api/story`);
       console.log("🔑 Token present:", !!token);
 
-      // ✅ OPTION 1: Using fetch with better error handling
-      const res = await fetch(`${API_URL}/api/story`, {
-        method: "POST",
+      const res = await axios.post(`${API_URL}/api/story`, formData, {
         headers: {
-          "Authorization": `Bearer ${token}`,
-          // Let FormData set Content-Type automatically
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
-        body: formData,
+        transformRequest: (data) => data,
       });
 
-      // First get response as text
-      const responseText = await res.text();
-      console.log("📨 Response status:", res.status);
-      console.log("📨 Response text (first 500 chars):", responseText.substring(0, 500));
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("❌ Failed to parse JSON:", parseError);
-        console.error("Raw response was:", responseText);
-
-        // Check if it's an HTML error page
-        if (responseText.includes('<html') || responseText.includes('<!DOCTYPE')) {
-          throw new Error("Server returned HTML error page. Check backend logs.");
-        } else {
-          throw new Error(`Server returned invalid response: ${responseText.substring(0, 100)}`);
-        }
-      }
-
-      if (!res.ok) {
-        throw new Error(data.message || `Upload failed with status ${res.status}`);
-      }
-
+      console.log("📨 Story upload success, status:", res.status);
       Alert.alert("Success ✅", "Your story has been uploaded!");
       router.back();
     } catch (err: any) {
       console.error("❌ Story upload failed:", err);
 
-      // More specific error messages
-      let errorMessage = err.message || "Network error";
+      let errorMessage =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Upload failed. Please check your connection.";
 
-      if (err.message.includes('Network request failed')) {
-        errorMessage = "Network connection failed. Check your internet.";
-      } else if (err.message.includes('JSON Parse')) {
-        errorMessage = "Server returned invalid response. Please try again.";
-      } else if (err.message.includes('HTML error page')) {
-        errorMessage = "Server error. Please contact support.";
+      if (err.message && err.message.includes("Network Error")) {
+        errorMessage = "Network connection failed. Please verify the backend server is reachable.";
       }
 
       Alert.alert("Upload Failed", errorMessage);

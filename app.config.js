@@ -11,6 +11,7 @@ export default ({ config }) => ({
   android: {
     ...config?.android,
     package: "com.yourdgwardrobe.app",
+    usesCleartextTraffic: true,
     adaptiveIcon: {
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
