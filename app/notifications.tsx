@@ -2,8 +2,8 @@ import api from "@/api/api";
 import { useTheme } from "@/app/theme/ThemeContext";
 import AppBackground from "@/components/AppBackground";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
+import { storage } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -40,7 +40,7 @@ export default function NotificationsScreen() {
     const [unreadCount, setUnreadCount] = useState(0);
 
     const loadNotifications = async () => {
-        const token = await AsyncStorage.getItem("token");
+        const token = await storage.getItem("token");
         if (!token) return;
 
         const res = await api.get("/api/notifications", {
@@ -52,7 +52,7 @@ export default function NotificationsScreen() {
     };
 
     const markAllRead = async () => {
-        const token = await AsyncStorage.getItem("token");
+        const token = await storage.getItem("token");
         if (!token) return;
 
         await api.post(
@@ -65,7 +65,7 @@ export default function NotificationsScreen() {
     };
 
     const markSingleRead = async (id: string) => {
-        const token = await AsyncStorage.getItem("token");
+        const token = await storage.getItem("token");
         if (!token) return;
 
         await api.post(

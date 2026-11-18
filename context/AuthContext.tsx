@@ -1,6 +1,6 @@
 // D:\nikhil\MyFirstApp\context\AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import { router } from "expo-router";
 
 interface AuthContextType {
@@ -27,8 +27,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const loadAuth = async () => {
       try {
-        const storedToken = await AsyncStorage.getItem("token");
-        const storedProfileCompleted = await AsyncStorage.getItem("profileCompleted");
+        const storedToken = await storage.getItem("token");
+        const storedProfileCompleted = await storage.getItem("profileCompleted");
 
         console.log("🔐 TOKEN FOUND:", storedToken);
         console.log("📋 Profile Completed:", storedProfileCompleted);
@@ -59,15 +59,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("   Profile completed:", completed);
 
     try {
-      await AsyncStorage.setItem("token", jwt);
-      console.log("   ✅ Token saved to AsyncStorage");
+      await storage.setItem("token", jwt);
+      console.log("   ✅ Token saved to SecureStorage");
 
-      await AsyncStorage.setItem("profileCompleted", completed ? 'true' : 'false');
-      console.log("   ✅ ProfileCompleted saved to AsyncStorage");
+      await storage.setItem("profileCompleted", completed ? 'true' : 'false');
+      console.log("   ✅ ProfileCompleted saved to SecureStorage");
 
       setToken(jwt);
       setProfileCompleted(completed);
- setAuthInProgress(false);
+      setAuthInProgress(false);
       console.log("   ✅ State updated in AuthContext");
       console.log("   ✅ Login completed successfully");
     } catch (error) {
@@ -77,16 +77,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem("token");
-    await AsyncStorage.removeItem("profileCompleted");
+    await storage.removeItem("token");
+    await storage.removeItem("profileCompleted");
     setToken(null);
     setProfileCompleted(null);
     router.replace("/(auth)/welcome");
   };
 
   const clearAuth = async () => {
-    await AsyncStorage.removeItem("token");
-    await AsyncStorage.removeItem("profileCompleted");
+    await storage.removeItem("token");
+    await storage.removeItem("profileCompleted");
     setToken(null);
     setProfileCompleted(null);
   };

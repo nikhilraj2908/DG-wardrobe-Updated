@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import axios from "axios";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
@@ -16,13 +16,7 @@ const api = axios.create({
 // ✅ Attach token automatically on requests
 api.interceptors.request.use(
   async (config) => {
-    let token = null;
-
-    if (Platform.OS !== "web") {
-      token = await AsyncStorage.getItem("token");
-    } else {
-      token = localStorage.getItem("token");
-    }
+    const token = await storage.getItem("token");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -50,12 +44,7 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       console.log("🔒 401 Unauthorized detected - Clearing expired auth session");
       try {
-        if (Platform.OS !== "web") {
-          await AsyncStorage.multiRemove(["token", "profileCompleted"]);
-        } else {
-          localStorage.removeItem("token");
-          localStorage.removeItem("profileCompleted");
-        }
+        await storage.multiRemove(["token", "profileCompleted"]);
       } catch (e) {
         console.error("Error clearing token on 401:", e);
       }

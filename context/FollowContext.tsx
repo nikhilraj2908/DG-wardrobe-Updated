@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import React, {
     createContext,
     useCallback,
@@ -24,7 +24,7 @@ export const FollowProvider = ({ children }: { children: React.ReactNode }) => {
 const { isAuthenticated, isLoading } = useAuth();
   const loadFollowing = useCallback(async () => {
   try {
-    const token = await AsyncStorage.getItem("token");
+    const token = await storage.getItem("token");
     if (!token) {
       setFollowingIds(new Set());
       return;
@@ -73,7 +73,7 @@ useEffect(() => {
     });
 
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       const res = await api.post(

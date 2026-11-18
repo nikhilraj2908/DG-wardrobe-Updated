@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/api";
 
@@ -21,7 +21,7 @@ export const SavedItemsProvider = ({ children }: { children: React.ReactNode }) 
   ----------------------------------- */
   const loadCurrentUser = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) {
         setCurrentUserId(null);
         return;
@@ -59,7 +59,7 @@ export const SavedItemsProvider = ({ children }: { children: React.ReactNode }) 
     if (!currentUserId) return;
 
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       const res = await api.get("/api/saved/me", {
@@ -86,7 +86,7 @@ export const SavedItemsProvider = ({ children }: { children: React.ReactNode }) 
     if (!currentUserId) return;
 
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       setSavedMap(prev => {

@@ -1,6 +1,6 @@
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, useMemo } from "react";
 import {
@@ -59,7 +59,7 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
   }>();
 
   const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(item.likes || 0);
+  const [likeCount, setLikeCount] = useState<number>(item.likes || 0);
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<CommentType[]>([]);
   const [showComments, setShowComments] = useState(false);
@@ -120,7 +120,7 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
 
   const fetchLikeStatus = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
       const res = await api.get(`/api/like/item/${item._id}/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -152,7 +152,7 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
 
   const handleLike = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) {
         Alert.alert("Login Required", "Please login to like posts");
         return;
@@ -177,7 +177,7 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
   const handleComment = async () => {
     if (!commentText.trim()) return;
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) {
         Alert.alert("Login Required", "Please login to comment");
         return;
@@ -202,7 +202,7 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
   const handleDeleteItem = async () => {
     try {
       setDeleting(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       await api.delete(`/api/wardrobe/item/${item._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -257,7 +257,7 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
   const handleDeleteComment = async () => {
     if (!selectedComment?._id) return;
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) {
         Alert.alert("Login Required", "Please login to delete comments");
         return;
@@ -422,7 +422,8 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
                   setActiveIndex(index);
                 }}
                 renderItem={({ item: uri }) => {
-                  const finalUrl = resolveImageUrl(uri);
+                  const finalUrl = resolveImageUrl(uri) || "";
+                  const ratio = finalUrl ? imageRatios[finalUrl] : undefined;
                   return (
                     <View
                       style={{
@@ -436,14 +437,14 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
                         style={[
                           styles.image,
                           {
-                            height: imageRatios[finalUrl]
-                              ? containerWidth * imageRatios[finalUrl]
+                            height: ratio
+                              ? containerWidth * ratio
                               : containerWidth * 0.75,
                           },
                         ]}
                         onLoad={(e) => {
                           const source = e?.nativeEvent?.source;
-                          if (!source?.width || !source?.height) return;
+                          if (!source?.width || !source?.height || !finalUrl) return;
                           setImageRatios((prev) => ({
                             ...prev,
                             [finalUrl]: source.height / source.width,

@@ -1,19 +1,19 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/context/AuthContext';
 import { useSavedItems } from '@/context/SavedItemsContext';
 import { useFollow } from '@/context/FollowContext';
 
 export default function BlockedScreen() {
   const router = useRouter();
+  const { logout } = useAuth();
   const { resetSaved } = useSavedItems();
   const { clearFollowing } = useFollow();
 
   const handleLogout = async () => {
-    await AsyncStorage.removeItem('token');
     resetSaved();
     clearFollowing();
-    router.replace('/');
+    await logout();
   };
 
   return (

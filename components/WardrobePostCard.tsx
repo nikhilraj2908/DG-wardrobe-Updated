@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -204,7 +204,7 @@ export default function WardrobePostCard({ item, onUpdate }: WardrobePostCardPro
   // Simplified like handler without backend check
   const handleLike = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) {
         Alert.alert("Login Required", "Please login to like posts");
         return;

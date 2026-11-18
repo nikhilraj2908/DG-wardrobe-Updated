@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import api from "../api/api";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../utils/storage";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { useTheme } from "@/app/theme/ThemeContext";
 
@@ -132,7 +132,7 @@ export default function CollectionPostCard({ item }: CollectionPostCardProps) {
 
     try {
       setLoadingItems(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const res = await api.get(`/api/wardrobe/user/${item.user._id}/items`, {

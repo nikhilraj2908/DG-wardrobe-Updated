@@ -12,6 +12,12 @@ export default ({ config }) => ({
     ...config?.android,
     package: "com.yourdgwardrobe.app",
     usesCleartextTraffic: true,
+    permissions: [
+      "INTERNET",
+      "VIBRATE",
+      "READ_EXTERNAL_STORAGE",
+      "WRITE_EXTERNAL_STORAGE",
+    ],
     adaptiveIcon: {
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",

@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(255,255,255,0.05)",
   },
 });
