@@ -1,10 +1,21 @@
-import { Image, Text, TouchableOpacity ,View} from "react-native";
+import React from "react";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 
-const Card = ({ data, onPress, size }) => {
+interface CardProps {
+  data: {
+    key: string;
+    label: string;
+    image: any;
+  };
+  onPress?: (key: string) => void;
+  size?: "tall" | "wide" | "small" | "medium" | "large" | string;
+}
+
+const Card = ({ data, onPress, size }: CardProps) => {
   const height =
-    size === "tall"
+    size === "tall" || size === "large"
       ? 260
-      : size === "wide"
+      : size === "wide" || size === "medium"
       ? 200
       : 140;
 
@@ -13,7 +24,7 @@ const Card = ({ data, onPress, size }) => {
   return (
     <TouchableOpacity
       activeOpacity={0.85}
-      onPress={() => onPress(data.key)}
+      onPress={() => onPress && onPress(data.key)}
       style={{
         flex,
         height,

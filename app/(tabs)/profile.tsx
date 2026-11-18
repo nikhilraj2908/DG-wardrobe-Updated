@@ -516,10 +516,10 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem("token");
+      setSettingsModalVisible(false);
       resetSaved();
       clearFollowing();
-      router.replace("/");
+      await logout();
     } catch (error) {
       console.error("Error logging out:", error);
     }

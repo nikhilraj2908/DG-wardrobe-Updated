@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
 
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(245, 244, 244, 0)", // Dark overlay to make white elements visible
   },
   container: {

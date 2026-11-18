@@ -75,7 +75,7 @@ export default function SearchModal({ visible, onClose, onSearch }: Props) {
           .map((cat) => ({
             type: "item",
             _id: `cat-${cat}`,
-            label: cat,
+            label: String(cat),
           }));
 
         const brandSuggestions: SearchItem[] = Array.from(
@@ -85,7 +85,7 @@ export default function SearchModal({ visible, onClose, onSearch }: Props) {
           .map((brand) => ({
             type: "item",
             _id: `brand-${brand}`,
-            label: brand,
+            label: String(brand),
           }));
 
         const users: SearchItem[] = (userRes.data.users || []).map(

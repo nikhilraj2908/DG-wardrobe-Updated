@@ -3,14 +3,17 @@ import axios from "axios";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-const API_URL = Constants.expoConfig.extra.apiBaseUrl;
+const API_URL =
+  Constants.expoConfig?.extra?.apiBaseUrl ||
+  process.env.EXPO_PUBLIC_API_URL ||
+  "http://13.127.122.25:5001";
 
 const api = axios.create({
   baseURL: API_URL,
   timeout: 30000,
 });
 
-// ✅ Attach token automatically
+// ✅ Attach token automatically on requests
 api.interceptors.request.use(
   async (config) => {
     let token = null;
@@ -40,5 +43,25 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ✅ Intercept 401 Unauthorized errors (session expired / invalid token)
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response && error.response.status === 401) {
+      console.log("🔒 401 Unauthorized detected - Clearing expired auth session");
+      try {
+        if (Platform.OS !== "web") {
+          await AsyncStorage.multiRemove(["token", "profileCompleted"]);
+        } else {
+          localStorage.removeItem("token");
+          localStorage.removeItem("profileCompleted");
+        }
+      } catch (e) {
+        console.error("Error clearing token on 401:", e);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

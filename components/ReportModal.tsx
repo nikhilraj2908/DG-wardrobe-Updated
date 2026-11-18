@@ -69,7 +69,7 @@ export default function ReportModal({
     setSelectedReason(reasonTitle);
     setSubmitting(true);
     try {
-      await api.post("/reports", {
+      await api.post("/api/reports", {
         targetType,
         targetId,
         reason: reasonTitle,
@@ -93,8 +93,15 @@ export default function ReportModal({
         {
           text: "Block",
           style: "destructive",
-          onPress: () => {
+          onPress: async () => {
             resetAndClose();
+            try {
+              if (authorId) {
+                await api.post(`/api/user/block/${authorId}`);
+              }
+            } catch (err) {
+              console.log("Error blocking user:", err);
+            }
             if (onBlockUser) {
               onBlockUser(authorUsername);
             }
@@ -350,7 +357,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0, 0, 0, 0.4)",
     justifyContent: "center",
     alignItems: "center",
@@ -395,3 +402,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+

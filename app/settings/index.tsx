@@ -67,6 +67,23 @@ const settingsPage = () => {
         );
     };
 
+    const handleLogoutPress = () => {
+        Alert.alert(
+            "Log Out",
+            "Are you sure you want to log out of DG Wardrobe?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Log Out",
+                    style: "destructive",
+                    onPress: async () => {
+                        await logout();
+                    },
+                },
+            ]
+        );
+    };
+
     const handleOpenTerms = () => {
         Alert.alert(
             "Terms of Service",
@@ -138,6 +155,14 @@ const settingsPage = () => {
                         <Text style={styles.text}>App Version: 1.0.0</Text>
                         <Text style={styles.text}>Managed and created by - Alogicdata</Text>
                         <Text style={styles.text}>© 2026 Alogic Data. All rights reserved.</Text>
+                    </View>
+
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Account</Text>
+                        <TouchableOpacity style={styles.settingOption} onPress={handleLogoutPress}>
+                            <Ionicons name="log-out-outline" size={20} color={colors.primary} />
+                            <Text style={styles.text}>Log Out</Text>
+                        </TouchableOpacity>
                     </View>
 
                     <View style={styles.section}>

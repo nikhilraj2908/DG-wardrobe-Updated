@@ -1,26 +1,31 @@
 import React from "react";
 import {
   ScrollView,
-  View,
-  Image,
-  Text,
-  TouchableOpacity,
 } from "react-native";
-import Row from "../components/Row";
-import Card from "../components/Card";
+import Row from "./Row";
+import Card from "./Card";
 
-// 🔥 TEMP DEMO DATA (replace later)
+const LAYOUT_PATTERN = [
+  { columns: 2, sizes: ["medium", "medium"] },
+  { columns: 1, sizes: ["large"] },
+  { columns: 3, sizes: ["small", "small", "small"] },
+];
+
+// Demo data
 const CATEGORIES = Array.from({ length: 30 }).map((_, i) => ({
   key: `Category-${i}|womens`,
   label: `Category ${i + 1}`,
-  image: require("../../assets/images/icon.png"),
+  image: require("../assets/images/icon.png"),
 }));
 
+interface CuratedExploreProps {
+  onSelectCategory?: (category: any) => void;
+}
 
-export default function CuratedExploreLayout({ onSelectCategory }) {
+export default function CuratedExploreLayout({ onSelectCategory }: CuratedExploreProps) {
   let index = 0;
   let patternIndex = 0;
-  const rows = [];
+  const rows: React.ReactNode[] = [];
 
   while (index < CATEGORIES.length) {
     const pattern = LAYOUT_PATTERN[patternIndex % LAYOUT_PATTERN.length];

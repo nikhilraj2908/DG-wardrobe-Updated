@@ -1,6 +1,11 @@
+import React from "react";
 import { View } from "react-native";
 
-const Row = ({ children }) => (
+interface RowProps {
+  children: React.ReactNode;
+}
+
+const Row = ({ children }: RowProps) => (
   <View
     style={{
       flexDirection: "row",
