@@ -197,19 +197,13 @@ export default function EditProfileScreen() {
         formData.append('photo', fileObject as any);
       }
 
-      const response = await fetch(`${baseURL}/api/user/me`, {
-        method: 'PUT',
+      const response = await api.put("/api/user/me", formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
-        body: formData,
+        transformRequest: (data) => data,
       });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || responseData.error || 'Update failed');
-      }
 
       Alert.alert("Success", "Profile updated successfully!");
       router.push({

@@ -1047,11 +1047,8 @@ useEffect(() => {
   // Helper functions
   const getAvatarUrl = (photo?: string, username?: string) => {
     if (photo && photo.trim() && photo !== "null") {
-      if (photo.startsWith("http")) return photo;
-      if (!photo.startsWith("/")) {
-        return `https://api.digiwardrobe.com/${photo}`;
-      }
-      return `https://api.digiwardrobe.com${photo}`;
+      const resolved = resolveImageUrl(photo);
+      if (resolved) return resolved;
     }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
       username || "User"

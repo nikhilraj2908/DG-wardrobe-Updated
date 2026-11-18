@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { resolveImageUrl } from '@/utils/resolveImageUrl';
 import { useSavedItems } from '../context/SavedItemsContext';
 import { useTheme } from '@/app/theme/ThemeContext';
 
@@ -42,21 +43,7 @@ export default function SavedGridCard({ item, onPress }: SavedGridCardProps) {
     return `₹${price}`;
   };
 
-  const getImageUrl = (imagePath: string) => {
-    if (!imagePath) return null;
-    
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    
-    if (imagePath.startsWith('/')) {
-      return `https://api.digiwardrobe.com${imagePath}`;
-    }
-    
-    return `https://api.digiwardrobe.com/${imagePath}`;
-  };
-
-  const imageUrl = getImageUrl(item.imageUrl);
+  const imageUrl = resolveImageUrl(item.imageUrl);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>

@@ -149,7 +149,7 @@ export default function AddWardrobe() {
     };
     const { theme } = useTheme();
     const colors = theme.colors;
-    const SERVER = "https://api.digiwardrobe.com";
+    const SERVER = api.defaults.baseURL || "http://13.127.122.25:5001";
     const [images, setImages] = useState<ImageItem[]>([]);
     const [category, setCategory] = useState("");
     const [customCategory, setCustomCategory] = useState("");
@@ -597,36 +597,27 @@ export default function AddWardrobe() {
             formData.append("gender", selectedCategory.type);
             if (description.trim()) formData.append("description", description.trim());
 
-            let url, method;
+            let url, method: "PUT" | "POST";
             if (isEdit && itemId) {
-                url = `${SERVER}/api/wardrobe/item/${itemId}`;
+                url = `/api/wardrobe/item/${itemId}`;
                 method = "PUT";
             } else {
-                url = `${SERVER}/api/wardrobe/add`;
+                url = `/api/wardrobe/add`;
                 method = "POST";
             }
 
-            const response = await fetch(url, {
+            const response = await api({
                 method,
+                url,
+                data: formData,
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    Accept: "application/json",
+                    "Content-Type": "multipart/form-data",
                 },
-                body: formData,
+                transformRequest: (data) => data,
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                let errorMessage = `Server error: ${response.status}`;
-                try {
-                    const errorData = JSON.parse(errorText);
-                    if (errorData.message) errorMessage = errorData.message;
-                    else if (errorData.error) errorMessage = errorData.error;
-                } catch (e) {}
-                throw new Error(errorMessage);
-            }
-
-            const data = await response.json();
+            const data = response.data;
             Alert.alert(
                 "Success",
                 isEdit ? "Item updated successfully!" : "Item added successfully!",

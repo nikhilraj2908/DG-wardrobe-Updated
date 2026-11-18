@@ -6,7 +6,7 @@ import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/app/theme/ThemeContext";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "@/api/api";
 
 const settingsPage = () => {
@@ -14,6 +14,21 @@ const settingsPage = () => {
     const { theme } = useTheme();
     const colors = theme.colors;
     const styles = useMemo(() => createStyles(colors), [colors]);
+    const [isGoogleUser, setIsGoogleUser] = useState(false);
+
+    useEffect(() => {
+        const checkUser = async () => {
+            try {
+                const res = await api.get("/api/user/me");
+                if (res.data?.user?.authProvider === "google") {
+                    setIsGoogleUser(true);
+                }
+            } catch (e) {
+                // Silently ignore
+            }
+        };
+        checkUser();
+    }, []);
 
     const handleBackNavigation = () => {
         router.back();
@@ -30,7 +45,7 @@ const settingsPage = () => {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            await api.delete("/user/me");
+                            await api.delete("/api/user/me");
                             await logout();
                             Alert.alert("Account Deleted", "Your account and all associated data have been permanently deleted.");
                             router.replace("/(auth)");

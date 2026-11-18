@@ -19,7 +19,7 @@ import api from "../api/api";
 import ReportModal from "./ReportModal";
 
 const { width } = Dimensions.get('window');
-const BASE_URL = "https://api.digiwardrobe.com";
+const BASE_URL = api.defaults.baseURL || "http://13.127.122.25:5001";
 
 interface WardrobeItem {
   _id: string;
