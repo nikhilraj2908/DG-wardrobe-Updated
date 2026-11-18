@@ -7,8 +7,7 @@ const API_URL = Constants.expoConfig.extra.apiBaseUrl;
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
- 
+  timeout: 30000,
 });
 
 // ✅ Attach token automatically
@@ -26,10 +25,14 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // 🔥🔥🔥 REAL FIX (HANDLE BOTH CASES)
     if (config.data instanceof FormData) {
-      delete config.headers["Content-Type"];
-      delete config.headers["content-type"];
+      if (Platform.OS === "web") {
+        delete config.headers["Content-Type"];
+        delete config.headers["content-type"];
+      } else {
+        config.headers["Content-Type"] = "multipart/form-data";
+        config.timeout = 120000; // 2 minutes for file uploads
+      }
     }
 
     return config;

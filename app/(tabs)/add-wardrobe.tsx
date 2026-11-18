@@ -1,3 +1,4 @@
+import axios from "axios";
 import { useTheme } from "@/app/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -597,24 +598,23 @@ export default function AddWardrobe() {
             formData.append("gender", selectedCategory.type);
             if (description.trim()) formData.append("description", description.trim());
 
-            let url, method: "PUT" | "POST";
-            if (isEdit && itemId) {
-                url = `/api/wardrobe/item/${itemId}`;
-                method = "PUT";
-            } else {
-                url = `/api/wardrobe/add`;
-                method = "POST";
-            }
+            let urlPath = isEdit && itemId
+                ? `/api/wardrobe/item/${itemId}`
+                : `/api/wardrobe/add`;
+            let method: "PUT" | "POST" = isEdit && itemId ? "PUT" : "POST";
+            const fullUrl = `${SERVER}${urlPath}`;
 
-            const response = await api({
+            console.log("🚀 Submitting wardrobe item to:", fullUrl);
+            const response = await axios({
                 method,
-                url,
+                url: fullUrl,
                 data: formData,
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "multipart/form-data",
                 },
                 transformRequest: (data) => data,
+                timeout: 120000,
             });
 
             const data = response.data;
@@ -638,10 +638,12 @@ export default function AddWardrobe() {
             );
         } catch (err: any) {
             console.error("❌ Upload error details:", err);
-            let errorMessage = err.message || "Something went wrong. Please try again.";
-            if (err.message.includes("Invalid existingImages format")) {
+            let errorMessage = err.response?.data?.message || err.message || "Something went wrong. Please try again.";
+            if (err.message && err.message.includes("Network Error")) {
+                errorMessage = "Network connection failed. Please check backend connection.";
+            } else if (err.message && err.message.includes("Invalid existingImages format")) {
                 errorMessage = "Image format error. Please try removing and re-adding images.";
-            } else if (err.message.includes("500") || err.message.includes("Server error")) {
+            } else if (err.message && (err.message.includes("500") || err.message.includes("Server error"))) {
                 errorMessage = "Server error. Please try again in a few moments.";
             }
             Alert.alert("Error", errorMessage);
