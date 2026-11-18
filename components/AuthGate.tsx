@@ -1,9 +1,11 @@
 import { View, ActivityIndicator } from "react-native";
 import { useAuth } from "@/context/AuthContext";
-import { Redirect, useSegments } from "expo-router";
+import { useRouter, useSegments } from "expo-router";
+import { useEffect } from "react";
 
-export default function AuthGate({ children }) {
+export default function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
+  const router = useRouter();
   const {
     isAuthenticated,
     hydrated,
@@ -11,53 +13,46 @@ export default function AuthGate({ children }) {
     authInProgress,
   } = useAuth();
 
-  const inAuthGroup = segments[0] === "(auth)";
-  const screen = segments[1];
+  useEffect(() => {
+    if (!hydrated || authInProgress) return;
 
-  const isCallback = inAuthGroup && screen === "callback";
-  const isCompleteProfile =
-    inAuthGroup && screen === "complete-profile";
+    const inAuthGroup = segments[0] === "(auth)";
+    const screen = segments[1];
 
-  // 1️⃣ Wait for hydration
+    const isCallback = inAuthGroup && screen === "callback";
+    const isCompleteProfile = inAuthGroup && screen === "complete-profile";
+
+    if (isCallback) return;
+
+    // 1️⃣ Not authenticated: redirect to welcome if outside auth screens
+    if (!isAuthenticated) {
+      if (!inAuthGroup) {
+        router.replace("/(auth)/welcome");
+      }
+      return;
+    }
+
+    // 2️⃣ Logged in but profile incomplete: redirect to complete-profile
+    if (profileCompleted === false) {
+      if (!isCompleteProfile) {
+        router.replace("/(auth)/complete-profile");
+      }
+      return;
+    }
+
+    // 3️⃣ Fully logged in: block auth screens, redirect to main app
+    if (profileCompleted === true && inAuthGroup) {
+      router.replace("/(tabs)/profile");
+    }
+  }, [isAuthenticated, hydrated, profileCompleted, authInProgress, segments]);
+
+  // Wait for hydration before rendering anything
   if (!hydrated) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" />
       </View>
     );
-  }
-
-  // 2️⃣ ALWAYS allow callback
-  if (isCallback) {
-    return <>{children}</>;
-  }
-
-  // 3️⃣ Allow while auth is running
-  if (authInProgress) {
-    return <>{children}</>;
-  }
-
-  // 4️⃣ Not authenticated
-  if (!isAuthenticated) {
-    // Allow staying inside auth screens
-    if (inAuthGroup) {
-      return <>{children}</>;
-    }
-
-    return <Redirect href="/(auth)/welcome" />;
-  }
-
-  // 5️⃣ Logged in but profile incomplete
-  if (profileCompleted === false) {
-    if (!isCompleteProfile) {
-      return <Redirect href="/(auth)/complete-profile" />;
-    }
-    return <>{children}</>;
-  }
-
-  // 6️⃣ Fully logged in → block auth screens
-  if (profileCompleted === true && inAuthGroup) {
-    return <Redirect href="/(tabs)/profile" />;
   }
 
   return <>{children}</>;
