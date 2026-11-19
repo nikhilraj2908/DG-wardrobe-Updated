@@ -577,22 +577,24 @@ export default function MatchPairScreen() {
         <View style={styles.container}>
           {/* ================= HEADER ================= */}
           <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
 
-            <View style={{ alignItems: "center" }}>
-              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-                {existingOutfitId ? "Edit Matched Pair" : "Match Pair Studio"}
-              </Text>
-              <Text style={styles.headerSubtitle}>
-                {canvasGarments.length === 0
-                  ? "Select items to build a pair"
-                  : `${canvasGarments.length} items on canvas`}
-              </Text>
+              <View>
+                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+                  {existingOutfitId ? "Edit Matched Pair" : "Match Pair Studio"}
+                </Text>
+                <Text style={styles.headerSubtitle}>
+                  {canvasGarments.length === 0
+                    ? "Select items to build a pair"
+                    : `${canvasGarments.length} items on canvas`}
+                </Text>
+              </View>
             </View>
 
             <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
@@ -1022,6 +1024,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 10,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   headerTitle: {
     fontSize: 18,

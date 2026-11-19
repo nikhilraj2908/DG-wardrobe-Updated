@@ -248,11 +248,12 @@ export default function EditProfileScreen() {
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.title}>Edit Profile</Text>
-            <View style={{ width: 40 }} />
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.title}>Edit Profile</Text>
+            </View>
           </View>
 
           {/* Profile Picture */}
@@ -415,10 +416,13 @@ const createStyles = (colors: any) =>
     },
     header: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      // marginBottom: 24,
       marginTop: 8,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
     },
     backButton: {
       padding: 8,

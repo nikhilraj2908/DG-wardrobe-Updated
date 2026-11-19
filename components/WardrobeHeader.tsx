@@ -4,6 +4,7 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface Props {
+  title?: string;
   onBack: () => void;
   onSearch?: () => void;
   onNotification?: () => void;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function WardrobeHeader({
+  title,
   onBack,
   onSearch,
   onNotification,
@@ -56,14 +58,18 @@ export default function WardrobeHeader({
     <View style={styles.wrapper}>
       <View style={styles.header}>
         <View style={styles.left}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+          <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
-          <Text style={styles.logoText}>
-            <Text style={styles.logoHighlight}>D</Text>
-            <Text style={styles.logoHighlight1}>W</Text>
-          </Text>
+          {title ? (
+            <Text style={styles.headerTitle}>{title}</Text>
+          ) : (
+            <Text style={styles.logoText}>
+              <Text style={styles.logoHighlight}>D</Text>
+              <Text style={styles.logoHighlight1}>W</Text>
+            </Text>
+          )}
         </View>
       </View>
 
@@ -108,7 +114,12 @@ const createStyles = (colors: any) =>
       alignItems: "center",
     },
     backBtn: {
-      marginRight: 10,
+      marginRight: 12,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.textPrimary,
     },
     logoText: {
       fontSize: 22,

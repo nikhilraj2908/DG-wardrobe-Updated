@@ -630,10 +630,15 @@ export default function AllWardrobeItemsScreen() {
         <View style={styles.container}>
           {/* ========== HEADER ========== */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>All Items</Text>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>All Items</Text>
+            </View>
             <View style={styles.headerActions}>
               <TouchableOpacity onPress={() => setIsGridView(!isGridView)}>
                 <Ionicons
@@ -950,6 +955,11 @@ const createStyles = (colors: any) =>
       paddingBottom: 10,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
     },
     headerTitle: {
       fontSize: 20,

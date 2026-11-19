@@ -731,14 +731,15 @@ export default function AddWardrobe() {
         <AppBackground>
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => {
-                        if (router.canGoBack()) router.back();
-                        else router.replace("/home");
-                    }}>
-                        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>{isEdit ? "Edit Item" : "Add to Wardrobe"}</Text>
-                    <View style={{ width: 24 }} />
+                    <View style={styles.headerLeft}>
+                        <TouchableOpacity onPress={() => {
+                            if (router.canGoBack()) router.back();
+                            else router.replace("/home");
+                        }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                        </TouchableOpacity>
+                        <Text style={styles.title}>{isEdit ? "Edit Item" : "Add to Wardrobe"}</Text>
+                    </View>
                 </View>
 
                 <View style={styles.uploadBox}>
@@ -1148,8 +1149,12 @@ const createStyles = (colors: any) =>
     header: {
       flexDirection: "row",
       marginBottom: 16,
-         alignItems: "center",
-      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
     },
     removeIcon: {
       position: "absolute",

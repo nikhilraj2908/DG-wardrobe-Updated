@@ -109,11 +109,12 @@ export default function PremiumWardrobeScreen() {
       <AppBackground>
         <ScrollView style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Premium Collection</Text>
-            <View style={{ width: 40 }} />
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Premium Collection</Text>
+            </View>
           </View>
 
           <View style={styles.statsContainer}>
@@ -182,8 +183,12 @@ const createStyles = (colors: any) =>
     header: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       marginBottom: 20,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
     },
     backButton: {
       padding: 8,

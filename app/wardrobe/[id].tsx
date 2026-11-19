@@ -271,10 +271,12 @@ export default function WardrobeDetailsScreen() {
         <View style={{ flex: 1 }}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle} numberOfLines={1}>{wardrobeName}</Text>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle} numberOfLines={1}>{wardrobeName}</Text>
+            </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               {!isPublicView && (
                 <TouchableOpacity
@@ -579,6 +581,13 @@ const createStyles = (colors: any) =>
       alignItems: "center",
       padding: 16,
       paddingTop: 0,
+    },
+    headerLeft: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginRight: 8,
     },
     headerTitle: {
       fontSize: 20,

@@ -139,13 +139,12 @@ export default function AllWardrobesScreen() {
         <View style={styles.container}>
           <View style={styles.header}>
             {!selectionMode ? (
-              <>
-                <TouchableOpacity onPress={() => router.back()}>
+              <View style={styles.headerLeft}>
+                <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>All Wardrobes</Text>
-                <View style={{ width: 24 }} />
-              </>
+              </View>
             ) : (
               <>
                 <Text style={styles.headerTitle}>
@@ -247,6 +246,11 @@ const createStyles = (colors: any) =>
       alignItems: "center",
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
     },
     headerTitle: {
       fontSize: 18,

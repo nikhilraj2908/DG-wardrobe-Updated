@@ -430,11 +430,12 @@ export default function ItemDetails() {
                     >
                         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
                             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                                <TouchableOpacity onPress={() => setShowComments(false)}>
-                                    <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-                                </TouchableOpacity>
-                                <Text style={styles.modalTitle}>Comments</Text>
-                                <View style={{ width: 24 }} />
+                                <View style={styles.headerLeft}>
+                                    <TouchableOpacity onPress={() => setShowComments(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                                    </TouchableOpacity>
+                                    <Text style={styles.modalTitle}>Comments</Text>
+                                </View>
                             </View>
                             <KeyboardAvoidingView
                                 style={{ flex: 1 }}
@@ -662,9 +663,13 @@ const createStyles = (colors: any) =>
         modalHeader: {
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
             padding: 16,
             borderBottomWidth: 1,
+        },
+        headerLeft: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
         },
         backButton: {
             padding: 4,

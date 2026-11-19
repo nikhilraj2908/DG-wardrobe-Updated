@@ -95,13 +95,14 @@ export default function CreateWardrobe() {
         <ScrollView style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.title}>
-              {isEditMode ? "Edit Wardrobe" : "Create Wardrobe"}
-            </Text>
-            <View style={{ width: 24 }} />
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.title}>
+                {isEditMode ? "Edit Wardrobe" : "Create Wardrobe"}
+              </Text>
+            </View>
           </View>
 
           {/* Name */}
@@ -175,9 +176,13 @@ const createStyles = (colors: any) =>
     },
     header: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
       marginBottom: 20,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
     },
     title: {
       fontSize: 18,

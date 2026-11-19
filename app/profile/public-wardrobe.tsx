@@ -439,17 +439,22 @@ export default function PublicWardrobeScreen() {
         <View style={styles.container}>
           {/* Header with User Info */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
 
-            <View style={styles.headerUserInfo}>
-              <Text style={styles.headerTitle}>
-                {userInfo?.name || userInfo?.username || "User"}'s Wardrobe
-              </Text>
-              <Text style={styles.headerSubtitle}>
-                {items.length} public {items.length === 1 ? 'item' : 'items'}
-              </Text>
+              <View style={styles.headerUserInfo}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  {userInfo?.name || userInfo?.username || "User"}'s Wardrobe
+                </Text>
+                <Text style={styles.headerSubtitle}>
+                  {items.length} public {items.length === 1 ? 'item' : 'items'}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.headerActions}>
@@ -707,26 +712,30 @@ const createStyles = (colors: any) =>
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 16,
-      // paddingVertical: 15,
-      // paddingTop: 45,
       backgroundColor: colors.background,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
+    headerLeft: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginRight: 12,
+    },
     headerUserInfo: {
       flex: 1,
-      marginHorizontal: 12,
     },
     headerTitle: {
       fontSize: 18,
       fontWeight: "700",
       color: colors.textPrimary,
-      textAlign: "center",
+      textAlign: "left",
     },
     headerSubtitle: {
       fontSize: 12,
       color: colors.textMuted,
-      textAlign: "center",
+      textAlign: "left",
       marginTop: 2,
     },
     headerActions: {
