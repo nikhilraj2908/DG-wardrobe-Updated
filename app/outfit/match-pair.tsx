@@ -793,32 +793,6 @@ export default function MatchPairScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-
-                {/* Background Cutout (Remove BG) */}
-                <View style={styles.controlGroup}>
-                  <Text style={styles.controlLabel}>Cutout</Text>
-                  {activeGarment.item.cutoutImage ? (
-                    <View style={styles.cutoutReadyBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                      <Text style={styles.cutoutReadyText}>PNG</Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.removeBgBtn, { backgroundColor: colors.primary }]}
-                      onPress={handleGenerateCutoutForSelected}
-                      disabled={generatingCutout}
-                    >
-                      {generatingCutout ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <>
-                          <Ionicons name="cut" size={12} color="#FFFFFF" style={{ marginRight: 3 }} />
-                          <Text style={styles.removeBgBtnText}>No BG</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
               </View>
             </View>
           ) : null}
@@ -1236,32 +1210,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-  },
-  cutoutReadyBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(16, 185, 129, 0.15)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    gap: 4,
-  },
-  cutoutReadyText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#10B981",
-  },
-  removeBgBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  removeBgBtnText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#FFFFFF",
   },
 
   /* Category Selector */
