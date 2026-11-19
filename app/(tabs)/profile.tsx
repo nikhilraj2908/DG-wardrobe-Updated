@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { storage } from "@/utils/storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
 // import HelpSupportPage from '../HelpSupportPage/HelpSupportPage'; // import your HelpSupportPage
 
 
@@ -853,22 +854,41 @@ useEffect(() => {
 
           {activeTab === "matchedPairs" && (
             <View style={styles.contentContainer}>
-              {/* Studio Launch Banner */}
+              {/* Studio Launch Banner (Matches User Screenshot) */}
               <TouchableOpacity
-                style={styles.studioBanner}
+                style={styles.pairStudioBanner}
                 onPress={() => router.push("/outfit/match-pair")}
-                activeOpacity={0.88}
+                activeOpacity={0.9}
               >
-                <View style={styles.studioBannerIconWrapper}>
-                  <Ionicons name="shirt" size={26} color="#fff" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={styles.studioBannerTitle}>Create New Pair</Text>
-                  <Text style={styles.studioBannerSubtitle}>
-                    Mix & match shirts, pants and accessories on the interactive canvas studio
-                  </Text>
-                </View>
-                <Ionicons name="arrow-forward-circle" size={28} color={theme.colors.primaryDark} />
+                <LinearGradient
+                  colors={["#581C87", "#7E22CE", "#9333EA"]}
+                  start={{ x: 0, y: 0.1 }}
+                  end={{ x: 1, y: 0.85 }}
+                  style={styles.pairStudioBannerGradient}
+                >
+                  {/* Decorative background subtle glow */}
+                  <View style={styles.bannerWaveShape} pointerEvents="none" />
+
+                  {/* Left 3D clothes rack illustration */}
+                  <Image
+                    source={require("@/assets/images/create_pair_banner.png")}
+                    style={styles.bannerClothesImage}
+                    resizeMode="contain"
+                  />
+
+                  {/* Middle Text info */}
+                  <View style={styles.bannerTextContainer}>
+                    <Text style={styles.bannerTitle}>Create New Pair</Text>
+                    <Text style={styles.bannerSubtitle}>
+                      Mix & match shirts, pants and accessories on the interactive canvas studio
+                    </Text>
+                  </View>
+
+                  {/* Right circular arrow button */}
+                  <View style={styles.bannerArrowCircle}>
+                    <Ionicons name="chevron-forward" size={19} color="#7E22CE" />
+                  </View>
+                </LinearGradient>
               </TouchableOpacity>
 
               {matchedPairs.length === 0 ? (
@@ -898,58 +918,92 @@ useEffect(() => {
                           params: { outfitId: pair._id },
                         })
                       }
-                      activeOpacity={0.85}
+                      activeOpacity={0.88}
                     >
+                      {/* Pair Card Header */}
                       <View style={styles.pairCardHeader}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.pairCardTitle}>{pair.name || "Untitled Pair"}</Text>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.pairCardTitle} numberOfLines={1}>
+                            {pair.name || "Untitled Pair"}
+                          </Text>
                           <Text style={styles.pairCardDate}>
                             {new Date(pair.createdAt).toLocaleDateString(undefined, {
-                              month: "short",
                               day: "numeric",
+                              month: "short",
                               year: "numeric",
                             })}{" "}
                             • {pair.items?.length || 0} items
                           </Text>
                         </View>
-                        <TouchableOpacity
-                          style={styles.pairDeleteBtn}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            deleteMatchedPair(pair._id);
-                          }}
-                        >
-                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                        </TouchableOpacity>
+
+                        <View style={styles.pairHeaderActionsRow}>
+                          {/* Edit / View in Canvas */}
+                          <TouchableOpacity
+                            style={styles.pairSettingsBtn}
+                            onPress={() =>
+                              router.push({
+                                pathname: "/outfit/match-pair",
+                                params: { outfitId: pair._id },
+                              })
+                            }
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          >
+                            <Ionicons name="settings-outline" size={17} color="#6D28D9" />
+                          </TouchableOpacity>
+
+                          {/* Delete Pair */}
+                          <TouchableOpacity
+                            style={styles.pairDeleteBtn}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              deleteMatchedPair(pair._id);
+                            }}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          >
+                            <Ionicons name="trash-outline" size={17} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
 
-                      {/* Garments horizontal preview strip */}
-                      <View style={styles.pairGarmentsRow}>
+                      {/* Garments horizontal preview row with (+) connectors */}
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.pairGarmentsRow}
+                      >
                         {pair.items?.map((itemSlot: any, idx: number) => {
                           const garment = itemSlot.item || {};
-                          const imgUri = garment.cutoutImage || garment.images?.[0] || garment.imageUrl || garment.image;
+                          const imgUri =
+                            garment.cutoutImage ||
+                            garment.images?.[0] ||
+                            garment.imageUrl ||
+                            garment.image;
+
                           return (
-                            <View key={idx} style={styles.pairGarmentThumbWrapper}>
-                              {imgUri ? (
-                                <Image
-                                  source={{ uri: resolveImageUrl(imgUri) }}
-                                  style={styles.pairGarmentThumb}
-                                  resizeMode="contain"
-                                />
-                              ) : (
-                                <View style={styles.pairGarmentThumbPlaceholder}>
-                                  <Ionicons name="shirt-outline" size={20} color="#888" />
-                                </View>
-                              )}
+                            <React.Fragment key={idx}>
+                              <View style={styles.pairGarmentThumbWrapper}>
+                                {imgUri ? (
+                                  <Image
+                                    source={{ uri: resolveImageUrl(imgUri) }}
+                                    style={styles.pairGarmentThumb}
+                                    resizeMode="contain"
+                                  />
+                                ) : (
+                                  <View style={styles.pairGarmentThumbPlaceholder}>
+                                    <Ionicons name="shirt-outline" size={24} color="#94A3B8" />
+                                  </View>
+                                )}
+                              </View>
+
                               {idx < (pair.items?.length || 0) - 1 && (
-                                <View style={styles.pairPlusBadge}>
-                                  <Ionicons name="add" size={12} color="#fff" />
+                                <View style={styles.pairInlinePlusBadge}>
+                                  <Ionicons name="add" size={13} color="#FFFFFF" />
                                 </View>
                               )}
-                            </View>
+                            </React.Fragment>
                           );
                         })}
-                      </View>
+                      </ScrollView>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -1279,39 +1333,68 @@ const createStyles = (theme: any) =>
       fontWeight: "700",
       fontSize: 13,
     },
-    studioBanner: {
+    pairStudioBanner: {
+      borderRadius: 24,
+      marginBottom: 16,
+      overflow: "hidden",
+      shadowColor: "#6B21A8",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.22,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    pairStudioBannerGradient: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: theme.colors.card,
-      borderRadius: 18,
-      padding: 16,
-      marginBottom: 16,
-      borderWidth: 1,
-      borderColor: theme.colors.primary,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    studioBannerIconWrapper: {
-      width: 48,
-      height: 48,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
       borderRadius: 24,
-      backgroundColor: theme.colors.primaryDark,
+      position: "relative",
+      overflow: "hidden",
+    },
+    bannerWaveShape: {
+      position: "absolute",
+      right: -30,
+      bottom: -45,
+      width: 140,
+      height: 140,
+      borderRadius: 70,
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
+    },
+    bannerClothesImage: {
+      width: 82,
+      height: 72,
+      borderRadius: 12,
+    },
+    bannerTextContainer: {
+      flex: 1,
+      marginLeft: 12,
+      marginRight: 8,
+    },
+    bannerTitle: {
+      fontSize: 17,
+      fontWeight: "800",
+      color: "#FFFFFF",
+      letterSpacing: 0.2,
+    },
+    bannerSubtitle: {
+      fontSize: 11.5,
+      color: "rgba(255, 255, 255, 0.88)",
+      lineHeight: 16,
+      marginTop: 4,
+    },
+    bannerArrowCircle: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: "#FFFFFF",
       justifyContent: "center",
       alignItems: "center",
-    },
-    studioBannerTitle: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: theme.colors.textPrimary,
-    },
-    studioBannerSubtitle: {
-      fontSize: 12,
-      color: theme.colors.textSecondary,
-      marginTop: 2,
-      lineHeight: 16,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 3,
     },
     emptyPairsCard: {
       alignItems: "center",
@@ -1356,83 +1439,93 @@ const createStyles = (theme: any) =>
       fontSize: 14,
     },
     pairsList: {
-      gap: 14,
+      gap: 16,
       marginBottom: 20,
     },
     pairCard: {
-      backgroundColor: theme.colors.card,
-      borderRadius: 18,
-      padding: 14,
+      backgroundColor: "#FFFFFF",
+      borderRadius: 24,
+      padding: 16,
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: "rgba(0,0,0,0.06)",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 4,
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
       elevation: 2,
     },
     pairCardHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 12,
+      marginBottom: 14,
     },
     pairCardTitle: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: theme.colors.textPrimary,
+      fontSize: 18,
+      fontWeight: "800",
+      color: "#1E1B4B",
     },
     pairCardDate: {
-      fontSize: 12,
-      color: theme.colors.textSecondary,
+      fontSize: 12.5,
+      color: "#6B7280",
       marginTop: 2,
+      fontWeight: "500",
+    },
+    pairHeaderActionsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    pairSettingsBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: "#EDE9FE",
+      justifyContent: "center",
+      alignItems: "center",
     },
     pairDeleteBtn: {
-      padding: 8,
-      borderRadius: 8,
+      width: 36,
+      height: 36,
+      borderRadius: 12,
       backgroundColor: "#FEE2E2",
+      justifyContent: "center",
+      alignItems: "center",
     },
     pairGarmentsRow: {
       flexDirection: "row",
       alignItems: "center",
-      flexWrap: "wrap",
-      gap: 10,
+      paddingVertical: 2,
     },
     pairGarmentThumbWrapper: {
-      position: "relative",
-      width: 72,
-      height: 72,
-      borderRadius: 12,
-      backgroundColor: theme.colors.surface,
+      width: 82,
+      height: 82,
+      borderRadius: 18,
+      backgroundColor: "#F8FAFC",
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: "rgba(0,0,0,0.06)",
       justifyContent: "center",
       alignItems: "center",
-      overflow: "visible",
+      padding: 6,
     },
     pairGarmentThumb: {
-      width: 62,
-      height: 62,
+      width: "100%",
+      height: "100%",
     },
     pairGarmentThumbPlaceholder: {
-      width: 62,
-      height: 62,
+      width: "100%",
+      height: "100%",
       justifyContent: "center",
       alignItems: "center",
     },
-    pairPlusBadge: {
-      position: "absolute",
-      right: -8,
-      top: 26,
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      backgroundColor: theme.colors.primaryDark,
+    pairInlinePlusBadge: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "#6D28D9",
       justifyContent: "center",
       alignItems: "center",
-      zIndex: 10,
-      borderWidth: 1.5,
-      borderColor: "#fff",
+      marginHorizontal: 8,
     },
     // Box grid for Premium and All Items
     boxGrid: {
