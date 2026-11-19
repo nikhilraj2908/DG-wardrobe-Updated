@@ -617,11 +617,6 @@ export default function MatchPairScreen() {
                 disabled={canvasGarments.length === 0}
                 activeOpacity={0.8}
               >
-                <Ionicons
-                  name="sparkles"
-                  size={15}
-                  color={canvasGarments.length > 0 ? "#FFFFFF" : colors.textMuted}
-                />
                 <Text
                   style={[
                     styles.saveBtnText,

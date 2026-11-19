@@ -759,7 +759,10 @@ useEffect(() => {
                   style={styles.matchPairActionBtn}
                   onPress={() => router.push("/outfit/match-pair")}
                 >
-                  <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
+                  <View style={styles.matchPairIconWrapper}>
+                    <Ionicons name="shirt-outline" size={15} color="rgba(255, 255, 255, 0.75)" style={styles.matchPairBackIcon} />
+                    <Ionicons name="shirt" size={15} color="#FFFFFF" style={styles.matchPairFrontIcon} />
+                  </View>
                   <Text style={styles.matchPairActionText}>Match Pair</Text>
                 </TouchableOpacity>
               </View>
@@ -930,7 +933,10 @@ useEffect(() => {
                     style={styles.startPairingBtn}
                     onPress={() => router.push("/outfit/match-pair")}
                   >
-                    <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
+                    <View style={styles.matchPairIconWrapper}>
+                      <Ionicons name="shirt-outline" size={15} color="rgba(255, 255, 255, 0.75)" style={styles.matchPairBackIcon} />
+                      <Ionicons name="shirt" size={15} color="#FFFFFF" style={styles.matchPairFrontIcon} />
+                    </View>
                     <Text style={styles.startPairingBtnText}>Open Match Studio</Text>
                   </TouchableOpacity>
                 </View>
@@ -1368,6 +1374,23 @@ const createStyles = (theme: any) =>
       color: "#fff",
       fontWeight: "700",
       fontSize: 13,
+    },
+    matchPairIconWrapper: {
+      width: 23,
+      height: 18,
+      position: "relative",
+      marginRight: 6,
+      justifyContent: "center",
+    },
+    matchPairBackIcon: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+    },
+    matchPairFrontIcon: {
+      position: "absolute",
+      left: 8,
+      top: 3,
     },
     pairStudioBanner: {
       borderRadius: 24,
