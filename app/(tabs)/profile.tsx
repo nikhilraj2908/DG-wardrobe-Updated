@@ -2,9 +2,9 @@ import AppBackground from "@/components/AppBackground";
 import { useFollow } from "@/context/FollowContext";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { storage } from "@/utils/storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 // import HelpSupportPage from '../HelpSupportPage/HelpSupportPage'; // import your HelpSupportPage
 
 
@@ -38,13 +38,14 @@ interface Wardrobe {
 
 interface WardrobeItem {
   _id: string;
-  wardrobe: string;
+  wardrobe: string | { _id?: string; name?: string };
   category: string;
   price: number;
   brand: string;
   imageUrl: string;
   images?: string[];
   visibility?: "public" | "private";
+  accessLevel?: string;
   user?: string;
 }
 
@@ -93,7 +94,8 @@ export default function ProfileScreen() {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"myWardrobes" | "savedItems">("myWardrobes");
+  const [activeTab, setActiveTab] = useState<"myWardrobes" | "savedItems" | "matchedPairs">("myWardrobes");
+  const [matchedPairs, setMatchedPairs] = useState<any[]>([]);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [wardrobes, setWardrobes] = useState<Wardrobe[]>([]);
   const [recentWardrobes, setRecentWardrobes] = useState<Wardrobe[]>([]);
@@ -134,7 +136,7 @@ export default function ProfileScreen() {
   const allItems = wardrobeItems;
 
   const fetchPendingPremiumCount = async () => {
-    const token = await AsyncStorage.getItem("token");
+    const token = await storage.getItem("token");
     if (!token) return;
 
     const res = await api.get("/api/premium/pending-count", {
@@ -209,7 +211,7 @@ export default function ProfileScreen() {
 
   const deleteSingleWardrobeFromProfile = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       await api.delete(`/api/wardrobe/${selectedWardrobeIds[0]}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -222,7 +224,7 @@ export default function ProfileScreen() {
 
   const deleteMultipleWardrobesFromProfile = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       await api.delete("/api/wardrobe/bulk-delete", {
         headers: { Authorization: `Bearer ${token}` },
         data: { wardrobeIds: selectedWardrobeIds },
@@ -242,6 +244,40 @@ export default function ProfileScreen() {
       console.log("Like count fetch failed", err);
       return 0;
     }
+  };
+
+  const fetchMatchedPairs = async () => {
+    try {
+      const storedToken = token || (await storage.getItem("token"));
+      if (!storedToken) return;
+      const res = await api.get("/api/outfits/my", {
+        headers: { Authorization: `Bearer ${storedToken}` },
+      });
+      setMatchedPairs(res.data.outfits || []);
+    } catch (err) {
+      console.log("Error loading matched pairs:", err);
+    }
+  };
+
+  const deleteMatchedPair = async (outfitId: string) => {
+    Alert.alert("Delete Pair?", "Are you sure you want to delete this matched pair?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const storedToken = token || (await storage.getItem("token"));
+            await api.delete(`/api/outfits/${outfitId}`, {
+              headers: { Authorization: `Bearer ${storedToken}` },
+            });
+            setMatchedPairs((prev) => prev.filter((p) => p._id !== outfitId));
+          } catch (err) {
+            Alert.alert("Error", "Failed to delete matched pair");
+          }
+        },
+      },
+    ]);
   };
 
 
@@ -290,7 +326,7 @@ export default function ProfileScreen() {
     if (activeTab !== "savedItems") return;
     const loadSavedItems = async () => {
       try {
-        const token = await AsyncStorage.getItem("token");
+        const token = await storage.getItem("token");
         if (!token) return;
         const res = await api.get("/api/saved/me", {
           headers: { Authorization: `Bearer ${token}` },
@@ -465,11 +501,22 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (!isLoading && isAuthenticated && token) {
       fetchProfileData();
+      fetchMatchedPairs();
     }
   }, [isLoading, isAuthenticated, token]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoading && isAuthenticated) {
+        fetchMatchedPairs();
+      }
+    }, [isLoading, isAuthenticated])
+  );
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchProfileData();
+    fetchMatchedPairs();
   };
 
   const handleWardrobePress = (wardrobe: Wardrobe) => {
@@ -650,7 +697,15 @@ useEffect(() => {
               onPress={() => setActiveTab("myWardrobes")}
             >
               <Text style={[styles.tabText, activeTab === "myWardrobes" && styles.activeTabText]}>
-                My Wardrobes
+                Wardrobes
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabBtn, activeTab === "matchedPairs" && styles.activeTab]}
+              onPress={() => setActiveTab("matchedPairs")}
+            >
+              <Text style={[styles.tabText, activeTab === "matchedPairs" && styles.activeTabText]}>
+                Pairs ({matchedPairs.length})
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -658,16 +713,27 @@ useEffect(() => {
               onPress={() => setActiveTab("savedItems")}
             >
               <Text style={[styles.tabText, activeTab === "savedItems" && styles.activeTabText]}>
-                Saved Items
+                Saved ({savedItems.length})
               </Text>
             </TouchableOpacity>
           </View>
 
-          {activeTab === "myWardrobes" ? (
+          {activeTab === "myWardrobes" && (
             <View style={styles.contentContainer}>
-              <TouchableOpacity style={styles.addWardrobeBtn} onPress={handleAddWardrobe}>
-                <Text style={styles.addWardrobeText}>+ Add New Wardrobe</Text>
-              </TouchableOpacity>
+              <View style={styles.actionsTopRow}>
+                <TouchableOpacity style={styles.addWardrobeBtn} onPress={handleAddWardrobe}>
+                  <Ionicons name="add" size={18} color={theme.colors.primaryDark} style={{ marginRight: 4 }} />
+                  <Text style={styles.addWardrobeText}>New Wardrobe</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.matchPairActionBtn}
+                  onPress={() => router.push("/outfit/match-pair")}
+                >
+                  <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.matchPairActionText}>Match Pair</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Box-shaped Wardrobes Grid */}
               <View style={styles.boxGrid}>
@@ -783,51 +849,144 @@ useEffect(() => {
                 </View>
               )}
             </View>
-          ) : (
+          )}
+
+          {activeTab === "matchedPairs" && (
             <View style={styles.contentContainer}>
-              {activeTab === "savedItems" && (
-                <View style={styles.savedContainer}>
-                  <View style={styles.savedHeader}>
-                    <Text style={styles.savedCount}>{savedItems.length} saved items</Text>
-                    <TouchableOpacity style={styles.sortButton}>
-                      <Text style={styles.sortButtonText}>Sort by</Text>
-                      <Ionicons name="chevron-down" size={16} color={theme.colors.textPrimary} />
-                    </TouchableOpacity>
-                  </View>
-                  {savedItems.length === 0 ? (
-                    <View style={styles.emptyState}>
-                      <Ionicons name="bookmark-outline" size={48} color="#ccc" />
-                      <Text style={styles.emptyStateText}>No saved items yet</Text>
-                      <Text style={styles.emptyStateSubText}>Items you save will appear here</Text>
+              {/* Studio Launch Banner */}
+              <TouchableOpacity
+                style={styles.studioBanner}
+                onPress={() => router.push("/outfit/match-pair")}
+                activeOpacity={0.88}
+              >
+                <View style={styles.studioBannerIconWrapper}>
+                  <Ionicons name="shirt" size={26} color="#fff" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 14 }}>
+                  <Text style={styles.studioBannerTitle}>Create New Pair</Text>
+                  <Text style={styles.studioBannerSubtitle}>
+                    Mix & match shirts, pants and accessories on the interactive canvas studio
+                  </Text>
+                </View>
+                <Ionicons name="arrow-forward-circle" size={28} color={theme.colors.primaryDark} />
+              </TouchableOpacity>
+
+              {matchedPairs.length === 0 ? (
+                <View style={styles.emptyPairsCard}>
+                  <Ionicons name="sparkles-outline" size={48} color={theme.colors.primaryDark} />
+                  <Text style={styles.emptyPairsTitle}>No Matched Pairs Yet</Text>
+                  <Text style={styles.emptyPairsSubtitle}>
+                    Combine your shirts, pants and shoes on the interactive studio canvas!
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.startPairingBtn}
+                    onPress={() => router.push("/outfit/match-pair")}
+                  >
+                    <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
+                    <Text style={styles.startPairingBtnText}>Open Match Studio</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.pairsList}>
+                  {matchedPairs.map((pair) => (
+                    <View key={pair._id} style={styles.pairCard}>
+                      <View style={styles.pairCardHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.pairCardTitle}>{pair.name || "Untitled Pair"}</Text>
+                          <Text style={styles.pairCardDate}>
+                            {new Date(pair.createdAt).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}{" "}
+                            • {pair.items?.length || 0} items
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.pairDeleteBtn}
+                          onPress={() => deleteMatchedPair(pair._id)}
+                        >
+                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Garments horizontal preview strip */}
+                      <View style={styles.pairGarmentsRow}>
+                        {pair.items?.map((itemSlot: any, idx: number) => {
+                          const garment = itemSlot.item || {};
+                          const imgUri = garment.images?.[0] || garment.imageUrl || garment.image;
+                          return (
+                            <View key={idx} style={styles.pairGarmentThumbWrapper}>
+                              {imgUri ? (
+                                <Image
+                                  source={{ uri: resolveImageUrl(imgUri) }}
+                                  style={styles.pairGarmentThumb}
+                                  resizeMode="contain"
+                                />
+                              ) : (
+                                <View style={styles.pairGarmentThumbPlaceholder}>
+                                  <Ionicons name="shirt-outline" size={20} color="#888" />
+                                </View>
+                              )}
+                              {idx < (pair.items?.length || 0) - 1 && (
+                                <View style={styles.pairPlusBadge}>
+                                  <Ionicons name="add" size={12} color="#fff" />
+                                </View>
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
                     </View>
-                  ) : (
-                    <View style={styles.savedGrid}>
-                      {savedItems.map((saved) => {
-                        if (!saved.item) return null;
-                        const imagePath = saved.item.images?.length && saved.item.images[0]
-                          ? saved.item.images[0]
-                          : saved.item.imageUrl;
-                        const itemData = {
-                          _id: saved.item._id,
-                          name: saved.item.name || "Item",
-                          brand: saved.item.brand || saved.item.user?.username || "Brand",
-                          price: saved.item.price || 0,
-                          likes: likeCounts[saved.item._id] || 0,
-                          imageUrl: resolveImageUrl(imagePath),
-                        };
-                        return (
-                          <View key={saved._id} style={styles.savedGridItem}>
-                            <SavedGridCard
-                              item={itemData}
-                              onPress={() => router.push(`/wardrobe/item/${itemData._id}`)}
-                            />
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
+                  ))}
                 </View>
               )}
+            </View>
+          )}
+
+          {activeTab === "savedItems" && (
+            <View style={styles.contentContainer}>
+              <View style={styles.savedContainer}>
+                <View style={styles.savedHeader}>
+                  <Text style={styles.savedCount}>{savedItems.length} saved items</Text>
+                  <TouchableOpacity style={styles.sortButton}>
+                    <Text style={styles.sortButtonText}>Sort by</Text>
+                    <Ionicons name="chevron-down" size={16} color={theme.colors.textPrimary} />
+                  </TouchableOpacity>
+                </View>
+                {savedItems.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="bookmark-outline" size={48} color="#ccc" />
+                    <Text style={styles.emptyStateText}>No saved items yet</Text>
+                    <Text style={styles.emptyStateSubText}>Items you save will appear here</Text>
+                  </View>
+                ) : (
+                  <View style={styles.savedGrid}>
+                    {savedItems.map((saved) => {
+                      if (!saved.item) return null;
+                      const imagePath = saved.item.images?.length && saved.item.images[0]
+                        ? saved.item.images[0]
+                        : saved.item.imageUrl;
+                      const itemData = {
+                        _id: saved.item._id,
+                        name: saved.item.name || "Item",
+                        brand: saved.item.brand || saved.item.user?.username || "Brand",
+                        price: saved.item.price || 0,
+                        likes: likeCounts[saved.item._id] || 0,
+                        imageUrl: resolveImageUrl(imagePath) || "",
+                      };
+                      return (
+                        <View key={saved._id} style={styles.savedGridItem}>
+                          <SavedGridCard
+                            item={itemData}
+                            onPress={() => router.push(`/wardrobe/item/${itemData._id}`)}
+                          />
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
             </View>
           )}
         </ScrollView>
@@ -916,7 +1075,11 @@ const createStyles = (theme: any) =>
       height: "100%",
     },
     imageOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
       backgroundColor: "#ffffff3f",
     },
     avatar: {
@@ -1059,20 +1222,204 @@ const createStyles = (theme: any) =>
     contentContainer: {
       marginBottom: 20,
     },
+    actionsTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 16,
+      gap: 10,
+    },
     addWardrobeBtn: {
+      flex: 1,
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
       borderWidth: 1,
       borderStyle: "dashed",
       borderColor: theme.colors.middary,
-      borderRadius: 20,
-      padding: 14,
-      alignItems: "center",
-      marginBottom: 16,
+      borderRadius: 16,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
       backgroundColor: theme.colors.surface,
     },
     addWardrobeText: {
       color: theme.colors.primaryDark,
-      fontWeight: "600",
+      fontWeight: "700",
+      fontSize: 13,
+    },
+    matchPairActionBtn: {
+      flex: 1,
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.colors.primaryDark,
+      borderRadius: 16,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      shadowColor: theme.colors.primaryDark,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    matchPairActionText: {
+      color: "#fff",
+      fontWeight: "700",
+      fontSize: 13,
+    },
+    studioBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.colors.card,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    studioBannerIconWrapper: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: theme.colors.primaryDark,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    studioBannerTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.textPrimary,
+    },
+    studioBannerSubtitle: {
+      fontSize: 12,
+      color: theme.colors.textSecondary,
+      marginTop: 2,
+      lineHeight: 16,
+    },
+    emptyPairsCard: {
+      alignItems: "center",
+      padding: 36,
+      backgroundColor: theme.colors.card,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginTop: 6,
+    },
+    emptyPairsTitle: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: theme.colors.textPrimary,
+      marginTop: 14,
+    },
+    emptyPairsSubtitle: {
+      fontSize: 13,
+      color: theme.colors.textSecondary,
+      textAlign: "center",
+      marginTop: 6,
+      lineHeight: 18,
+      paddingHorizontal: 10,
+    },
+    startPairingBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.colors.primaryDark,
+      borderRadius: 24,
+      paddingVertical: 12,
+      paddingHorizontal: 22,
+      marginTop: 18,
+      shadowColor: theme.colors.primaryDark,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.3,
+      shadowRadius: 5,
+      elevation: 3,
+    },
+    startPairingBtnText: {
+      color: "#fff",
+      fontWeight: "700",
       fontSize: 14,
+    },
+    pairsList: {
+      gap: 14,
+      marginBottom: 20,
+    },
+    pairCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: 18,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    pairCardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    pairCardTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.textPrimary,
+    },
+    pairCardDate: {
+      fontSize: 12,
+      color: theme.colors.textSecondary,
+      marginTop: 2,
+    },
+    pairDeleteBtn: {
+      padding: 8,
+      borderRadius: 8,
+      backgroundColor: "#FEE2E2",
+    },
+    pairGarmentsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    pairGarmentThumbWrapper: {
+      position: "relative",
+      width: 72,
+      height: 72,
+      borderRadius: 12,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      justifyContent: "center",
+      alignItems: "center",
+      overflow: "visible",
+    },
+    pairGarmentThumb: {
+      width: 62,
+      height: 62,
+    },
+    pairGarmentThumbPlaceholder: {
+      width: 62,
+      height: 62,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    pairPlusBadge: {
+      position: "absolute",
+      right: -8,
+      top: 26,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: theme.colors.primaryDark,
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 10,
+      borderWidth: 1.5,
+      borderColor: "#fff",
     },
     // Box grid for Premium and All Items
     boxGrid: {
