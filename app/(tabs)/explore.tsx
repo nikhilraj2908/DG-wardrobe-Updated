@@ -573,22 +573,46 @@ useEffect(() => {
   };
 
   useEffect(() => {
+    let isCancelled = false;
     const loadLikes = async () => {
-      const counts: Record<string, number> = {};
-      const statuses: Record<string, boolean> = {};
+      try {
+        const counts: Record<string, number> = {};
+        const statuses: Record<string, boolean> = {};
 
-      for (const item of items) {
-        counts[item._id] = await fetchLikeCount(item._id);
-        statuses[item._id] = await fetchLikeStatus(item._id);
+        // Fetch like count and status concurrently in parallel
+        await Promise.all(
+          items.map(async (item) => {
+            try {
+              const [count, liked] = await Promise.all([
+                fetchLikeCount(item._id),
+                fetchLikeStatus(item._id),
+              ]);
+              if (!isCancelled) {
+                counts[item._id] = count;
+                statuses[item._id] = liked;
+              }
+            } catch (e) {
+              // Ignore individual failure
+            }
+          })
+        );
+
+        if (!isCancelled) {
+          setLikeCounts((prev) => ({ ...prev, ...counts }));
+          setLikedItems((prev) => ({ ...prev, ...statuses }));
+        }
+      } catch (err) {
+        console.log("Likes load error:", err);
       }
-
-      setLikeCounts(counts);
-      setLikedItems(statuses);
     };
 
     if (items.length > 0) {
       loadLikes();
     }
+
+    return () => {
+      isCancelled = true;
+    };
   }, [items]);
 
   // Render item card with collage style

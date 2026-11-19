@@ -167,7 +167,9 @@ export default function AllWardrobeItemsScreen() {
 
   const fetchItems = async () => {
     try {
-      setLoading(true);
+      if (!items || items.length === 0) {
+        setLoading(true);
+      }
       const token = await storage.getItem("token");
 
       let res;
@@ -178,20 +180,18 @@ export default function AllWardrobeItemsScreen() {
         });
         setItems(res.data.items);
       } else {
-        res = await api.get("/api/wardrobe/my", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setItems(res.data);
-
-        try {
-          const userRes = await api.get("/api/user/me", {
+        const [itemsRes, userRes] = await Promise.all([
+          api.get("/api/wardrobe/my", {
             headers: { Authorization: `Bearer ${token}` },
-          });
-          if (userRes.data?.gender) {
-            setUserGender(userRes.data.gender);
-          }
-        } catch (err) {
-          console.log("Could not fetch user gender");
+          }),
+          api.get("/api/user/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => null),
+        ]);
+        setItems(itemsRes.data);
+
+        if (userRes?.data?.gender) {
+          setUserGender(userRes.data.gender);
         }
       }
     } catch (err) {

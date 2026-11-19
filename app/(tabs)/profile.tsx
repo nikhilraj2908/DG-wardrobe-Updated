@@ -75,15 +75,17 @@ interface SavedItem {
   _id: string;
   item: {
     _id: string;
-    imageUrl: string;
+    imageUrl?: string;
     images?: string[];
+    cutoutImage?: string;
+    image?: string;
     price: number;
     user: {
       username: string;
       photo?: string;
     };
-    brand: string,
-    name: string
+    brand: string;
+    name: string;
   };
 }
 
@@ -338,7 +340,9 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => {
-    fetchSavedItems();
+    if (activeTab === "savedItems") {
+      fetchSavedItems();
+    }
   }, [activeTab, savedItemIds]);
 
   useEffect(() => {
@@ -362,15 +366,30 @@ export default function ProfileScreen() {
   }, [savedItems, activeTab]);
 
   const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=random';
+  const isFetchingRef = React.useRef(false);
 
   // Fetch user profile and wardrobes data
-  const fetchProfileData = async () => {
+  const fetchProfileData = async (showLoading = false) => {
     try {
-      setLoading(true);
-      // Fetch user's actual profile data
-      const userResponse = await api.get("/api/user/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      if (showLoading && !userData) {
+        setLoading(true);
+      }
+      const authToken = token || (await storage.getItem("token"));
+      if (!authToken) return;
+
+      // Parallel fetch for user info, wardrobes, and items
+      const [userResponse, wardrobesResponse, itemsResponse] = await Promise.all([
+        api.get("/api/user/me", {
+          headers: { Authorization: `Bearer ${authToken}` },
+        }),
+        api.get("/api/wardrobe/list", {
+          headers: { Authorization: `Bearer ${authToken}` },
+        }),
+        api.get("/api/wardrobe/my", {
+          headers: { Authorization: `Bearer ${authToken}` },
+        }),
+      ]);
+
       const user = userResponse.data;
 
       // Check if the user is blocked
@@ -380,25 +399,18 @@ export default function ProfileScreen() {
         return;
       }
 
-
-      // Continue fetching other profile details if the user is not blocked
       setUser(user);
 
-      // Fetch followers & following counts
-      const followCountRes = await api.get(`/api/follow/counts/${user._id}`);
-      setFollowersCount(followCountRes.data.followers || 0);
-      setFollowingCount(followCountRes.data.following || 0);
+      // Fetch followers & following counts concurrently
+      const followCountRes = await api.get(`/api/follow/counts/${user._id}`).catch(() => ({
+        data: { followers: 0, following: 0 },
+      }));
+      const followers = followCountRes.data?.followers || 0;
+      const following = followCountRes.data?.following || 0;
+      setFollowersCount(followers);
+      setFollowingCount(following);
 
-      // Fetch user's wardrobe collections
-      const wardrobesResponse = await api.get("/api/wardrobe/list", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // Fetch user's wardrobe items
-      const itemsResponse = await api.get("/api/wardrobe/my", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      // Process wardrobe items
       let allItems: WardrobeItem[] = [];
       let totalWorth = 0;
 
@@ -440,32 +452,32 @@ export default function ProfileScreen() {
         handle: userHandle,
         bio: userBio,
         collectionWorth: formattedWorth,
-        followers: formatNumber(followCountRes.data.followers || 0),
+        followers: formatNumber(followers),
         wardrobeCount: wardrobesList.length,
       });
 
-    }catch (error: any) {
-  console.error("Error fetching profile data:", error);
+    } catch (error: any) {
+      console.error("Error fetching profile data:", error);
 
-  // If the API returns 403, treat as blocked (regardless of message)
-  if (error.response?.status === 403) {
-    setBlocked(true);
-    setUser(null);
-  } else {
-    // Fallback for other errors (network, server down, etc.)
-    setUserData({
-      name: "John Doe",
-      handle: "@johndoe",
-      bio: "Fashion enthusiast | Style curator",
-      collectionWorth: "₹0",
-      followers: "0",
-      wardrobeCount: 0,
-    });
-    setWardrobes([]);
-    setRecentWardrobes([]);
-    setWardrobeItems([]);
-  }
-}finally {
+      // If the API returns 403, treat as blocked (regardless of message)
+      if (error.response?.status === 403) {
+        setBlocked(true);
+        setUser(null);
+      } else if (!userData) {
+        // Fallback only if no profile data has ever loaded
+        setUserData({
+          name: "John Doe",
+          handle: "@johndoe",
+          bio: "Fashion enthusiast | Style curator",
+          collectionWorth: "₹0",
+          followers: "0",
+          wardrobeCount: 0,
+        });
+        setWardrobes([]);
+        setRecentWardrobes([]);
+        setWardrobeItems([]);
+      }
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -505,29 +517,35 @@ export default function ProfileScreen() {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
 
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && token) {
-      fetchProfileData();
-      fetchMatchedPairs();
-      fetchSavedItems();
-    }
-  }, [isLoading, isAuthenticated, token]);
-
   useFocusEffect(
     useCallback(() => {
       if (!isLoading && isAuthenticated) {
-        fetchProfileData();
-        fetchMatchedPairs();
-        fetchSavedItems();
+        if (isFetchingRef.current) return;
+        isFetchingRef.current = true;
+
+        const isInitial = !userData;
+        Promise.allSettled([
+          fetchProfileData(isInitial),
+          fetchMatchedPairs(),
+          fetchSavedItems(),
+          fetchPendingPremiumCount(),
+        ]).finally(() => {
+          isFetchingRef.current = false;
+        });
       }
-    }, [isLoading, isAuthenticated, token])
+    }, [isLoading, isAuthenticated, token, userData === null])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchProfileData();
-    fetchMatchedPairs();
-    fetchSavedItems();
+    Promise.allSettled([
+      fetchProfileData(false),
+      fetchMatchedPairs(),
+      fetchSavedItems(),
+      fetchPendingPremiumCount(),
+    ]).finally(() => {
+      setRefreshing(false);
+    });
   };
 
   const handleWardrobePress = (wardrobe: Wardrobe) => {
