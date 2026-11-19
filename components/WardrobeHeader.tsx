@@ -39,11 +39,12 @@ export default function WardrobeHeader({
     <TouchableOpacity
       onPress={onPress}
       style={[styles.filterBtn, active && styles.filterActive]}
+      activeOpacity={0.8}
     >
       <Ionicons
         name={icon}
         size={16}
-        color={active ? colors.primaryDark : colors.textSecondary}
+        color={active ? "#FFFFFF" : colors.textPrimary}
       />
       <Text style={[styles.filterText, active && styles.filterTextActive]}>
         {label}
@@ -131,21 +132,29 @@ const createStyles = (colors: any) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      paddingHorizontal: 12,
+      paddingHorizontal: 14,
       paddingVertical: 8,
       borderRadius: 20,
-      backgroundColor: colors.card,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
     },
     filterActive: {
-      backgroundColor: colors.middary,
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
     },
     filterText: {
       fontSize: 13,
-      color: colors.textSecondary,
-      fontWeight: "500",
+      color: colors.textPrimary,
+      fontWeight: "600",
     },
     filterTextActive: {
-      color: colors.primaryDark,
-      fontWeight: "600",
+      color: "#FFFFFF",
+      fontWeight: "700",
     },
   });
