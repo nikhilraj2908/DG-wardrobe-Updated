@@ -819,7 +819,7 @@ useEffect(() => {
                       <Text style={styles.itemsCount}>{wardrobe.itemCount || 0} items</Text>
                     </View>
                     <View>
-                      <Text>{formatPrice(wardrobe.totalWorth || 0)}</Text>
+                      <Text style={styles.wardrobePrice}>{formatPrice(wardrobe.totalWorth || 0)}</Text>
                     </View>
                     {wardrobeSelectionMode ? (
                       <Ionicons
@@ -1577,8 +1577,8 @@ const createStyles = (theme: any) =>
       borderRadius: 16,
       padding: 12,
       marginBottom: 12,
-      borderWidth: .5,
-      borderColor: theme.colors.primary
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
     imagesRow: {
       flexDirection: "row",
@@ -1591,12 +1591,19 @@ const createStyles = (theme: any) =>
     },
     wardrobeName: {
       fontWeight: "700",
-      fontSize: 14,
+      fontSize: 15,
+      color: theme.colors.textPrimary,
     },
     itemsCount: {
       color: theme.colors.textSecondary,
       marginTop: 4,
       fontSize: 12,
+    },
+    wardrobePrice: {
+      fontWeight: "700",
+      fontSize: 14,
+      color: theme.colors.textPrimary,
+      marginRight: 6,
     },
     emptyState: {
       alignItems: "center",

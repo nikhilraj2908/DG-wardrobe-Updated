@@ -438,7 +438,7 @@ export default function AllWardrobeItemsScreen() {
             <Ionicons
               name="shirt-outline"
               size={22}
-              color={isSelected ? colors.primaryDark : colors.primary}
+              color={isSelected ? "#FFFFFF" : colors.primary}
             />
           )}
 
@@ -713,11 +713,13 @@ export default function AllWardrobeItemsScreen() {
                   <Ionicons
                     name="apps-outline"
                     size={22}
-                    color={!selectedCategory ? colors.primaryDark : colors.primary}
+                    color={!selectedCategory ? "#FFFFFF" : colors.primary}
                   />
                   {items.length > 0 && (
                     <View style={[styles.categoryCountBadge, !selectedCategory && styles.categoryCountBadgeSelected]}>
-                      <Text style={styles.categoryCountText}>{items.length}</Text>
+                      <Text style={[styles.categoryCountText, !selectedCategory && styles.categoryCountTextSelected]}>
+                        {items.length}
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -1049,15 +1051,20 @@ const createStyles = (colors: any) =>
     },
     categoriesScrollView: {
       paddingLeft: 16,
-      paddingTop: 2,
+      paddingTop: 8,
+      paddingBottom: 4,
+      overflow: "visible",
     },
     categoriesContent: {
       paddingRight: 16,
-      gap: 12,
+      paddingTop: 6,
+      paddingBottom: 4,
+      gap: 14,
     },
     categoryChip: {
       alignItems: "center",
       width: 70,
+      overflow: "visible",
     },
     categoryChipSelected: {
       transform: [{ scale: 1.05 }],
@@ -1066,57 +1073,60 @@ const createStyles = (colors: any) =>
       width: 56,
       height: 56,
       borderRadius: 28,
-      backgroundColor: colors.card,
+      backgroundColor: colors.surface,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: 6,
       position: "relative",
-      borderWidth: 2,
-      borderColor: "transparent",
+      borderWidth: 1.5,
+      borderColor: colors.border,
     },
     categoryIconContainerSelected: {
       backgroundColor: colors.primary,
-      borderColor: colors.background,
+      borderColor: colors.primary,
       shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.35,
       shadowRadius: 6,
       elevation: 6,
-      color: colors.background,
-
     },
     categoryIcon: {
       width: 28,
       height: 28,
       resizeMode: "contain",
+      tintColor: colors.primary,
     },
     categoryIconSelected: {
-      // tintColor: colors.primaryDark,
-      color: colors.card,
-
+      tintColor: "#FFFFFF",
     },
     categoryCountBadge: {
       position: "absolute",
-      top: -4,
-      right: -4,
+      top: -3,
+      right: -3,
       backgroundColor: colors.primary,
-      borderRadius: 10,
-      minWidth: 20,
-      height: 20,
+      borderRadius: 11,
+      minWidth: 22,
+      height: 22,
       justifyContent: "center",
       alignItems: "center",
       paddingHorizontal: 4,
+      borderWidth: 1.5,
+      borderColor: colors.surface,
+      zIndex: 10,
+      elevation: 3,
     },
     categoryCountBadgeSelected: {
-      backgroundColor: colors.primaryDark,
+      backgroundColor: "#FFFFFF",
+      borderColor: colors.primary,
     },
     categoryCountText: {
-      color: colors.background,
+      color: "#FFFFFF",
       fontSize: 10,
       fontWeight: "700",
     },
     categoryCountTextSelected: {
       color: colors.primary,
+      fontWeight: "800",
     },
     categoryChipLabel: {
       fontSize: 11,
