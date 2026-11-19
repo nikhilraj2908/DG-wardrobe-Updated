@@ -1,5 +1,6 @@
 // app/wardrobe/[id].tsx
 import AppBackground from "@/components/AppBackground";
+import WardrobeClosetRack from "@/components/WardrobeClosetRack";
 import { Ionicons } from "@expo/vector-icons";
 import { storage } from "@/utils/storage";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -50,7 +51,7 @@ export default function WardrobeDetailsScreen() {
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [sortModalVisible, setSortModalVisible] = useState(false);
   const [sortBy, setSortBy] = useState<"dateNewest" | "dateOldest" | "priceHigh" | "priceLow" | "nameAZ">("dateNewest");
-  const [isGridView, setIsGridView] = useState(true);
+  const [viewMode, setViewMode] = useState<"closet" | "grid">("closet");
   const [loading, setLoading] = useState(true);
   const isPublicView = params.public === "true";
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
@@ -137,10 +138,10 @@ export default function WardrobeDetailsScreen() {
 
   const getFirstItemImage = (item: WardrobeItem): string | null => {
     if (Array.isArray(item.images) && item.images.length > 0) {
-      return resolveImageUrl(item.images[0]);
+      return resolveImageUrl(item.images[0]) || null;
     }
     if (item.imageUrl) {
-      return resolveImageUrl(item.imageUrl);
+      return resolveImageUrl(item.imageUrl) || null;
     }
     return null;
   };
@@ -286,8 +287,15 @@ export default function WardrobeDetailsScreen() {
                   <Text style={styles.headerAddBtnText}>Add</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={() => setIsGridView(!isGridView)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                <Ionicons name={isGridView ? "grid-outline" : "list-outline"} size={22} color={colors.textPrimary} />
+              <TouchableOpacity
+                onPress={() => setViewMode(v => v === "closet" ? "grid" : "closet")}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Ionicons
+                  name={viewMode === "closet" ? "grid-outline" : "shirt-outline"}
+                  size={22}
+                  color={colors.textPrimary}
+                />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setSortModalVisible(true)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
                 <Ionicons name="filter-outline" size={22} color={colors.primary} />
@@ -334,120 +342,128 @@ export default function WardrobeDetailsScreen() {
 
           <Text style={styles.itemCountText}>{items.length} {items.length === 1 ? "item" : "items"} in this wardrobe</Text>
 
-          <ScrollView
-            key={renderVersion}
-            style={{ padding: 16 }}
-            contentContainerStyle={{ paddingBottom: 110 }}
-            showsVerticalScrollIndicator={false}
-          >
-            {loading ? (
-              <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: 40 }} />
-            ) : sortedItems.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <View style={styles.emptyIconCircle}>
-                  <Ionicons name="shirt-outline" size={44} color={colors.primary} />
-                </View>
-                <Text style={styles.emptyTitle}>This wardrobe is empty</Text>
-                <Text style={styles.emptySubtitle}>
-                  Add clothes and outfits directly to your "{wardrobeName}" collection.
-                </Text>
-                {!isPublicView && (
-                  <TouchableOpacity
-                    style={styles.emptyAddBtn}
-                    onPress={handleAddClothes}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-                    <Text style={styles.emptyAddBtnText}>Add Clothes to {wardrobeName}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : (
-              <View style={isGridView ? styles.gridContainer : undefined}>
-                {sortedItems.map((item) => {
-                  const imagePath = getFirstItemImage(item);
-                  const isSelected = selectedItemIds.includes(item._id);
-                  const itemKey = `${item._id}-${renderVersion}-${isSelected ? 'selected' : 'normal'}`;
-
-                  return (
+          {loading && items.length === 0 ? (
+            <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: 40 }} />
+          ) : viewMode === "closet" ? (
+            <WardrobeClosetRack
+              items={sortedItems}
+              colors={colors}
+              onItemPress={(item) => router.push(`/wardrobe/item/${item._id}`)}
+              onItemLongPress={(item) => {
+                if (!itemSelectionMode) {
+                  setSelectedItemIds([item._id]);
+                }
+              }}
+              onAddClothes={handleAddClothes}
+              isPublicView={isPublicView}
+              selectedItemIds={selectedItemIds}
+              itemSelectionMode={itemSelectionMode}
+              toggleItemSelect={toggleItemSelect}
+            />
+          ) : (
+            <ScrollView
+              key={renderVersion}
+              style={{ padding: 16 }}
+              contentContainerStyle={{ paddingBottom: 110 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {sortedItems.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <View style={styles.emptyIconCircle}>
+                    <Ionicons name="shirt-outline" size={44} color={colors.primary} />
+                  </View>
+                  <Text style={styles.emptyTitle}>This wardrobe is empty</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Add clothes and outfits directly to your "{wardrobeName}" collection.
+                  </Text>
+                  {!isPublicView && (
                     <TouchableOpacity
-                      key={itemKey}
-                      activeOpacity={0.9}
-                      onPress={() =>
-                        itemSelectionMode
-                          ? toggleItemSelect(item._id)
-                          : router.push(`/wardrobe/item/${item._id}`)
-                      }
-                      onLongPress={() => {
-                        if (!itemSelectionMode) {
-                          setSelectedItemIds([item._id]);
-                        }
-                      }}
-                      style={[
-                        isGridView ? styles.gridItem : styles.listItem,
-                        isSelected && styles.selectedItem,
-                      ]}
+                      style={styles.emptyAddBtn}
+                      onPress={handleAddClothes}
+                      activeOpacity={0.85}
                     >
-                      <View style={styles.imageContainer}>
-                        {imagePath ? (
-                          <Image
-                            key={`image-${itemKey}`}
-                            source={{ uri: imagePath }}
-                            style={[
-                              isGridView ? styles.gridImage : styles.listImage,
-                              itemSelectionMode && !isSelected && { opacity: 0.3 }
-                            ]}
-                            resizeMode="cover"
-                            onError={(e) => console.log('Image error for', item._id, e.nativeEvent.error)}
-                          />
-                        ) : (
-                          <View style={isGridView ? styles.gridImagePlaceholder : styles.listImagePlaceholder}>
-                            <Ionicons name="shirt-outline" size={36} color={colors.primary} />
-                          </View>
-                        )}
-
-                        {/* Selection indicator */}
-                        {itemSelectionMode && (
-                          <View style={[
-                            styles.selectionIndicator,
-                            isSelected ? styles.selectedIndicator : styles.unselectedIndicator
-                          ]}>
-                            {isSelected ? (
-                              <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
-                            ) : (
-                              <View style={[styles.unselectedCircle, { borderColor: colors.primary }]} />
-                            )}
-                          </View>
-                        )}
-                      </View>
-
-                      <View style={[
-                        isGridView ? { padding: 8 } : { flex: 1, paddingLeft: 12 },
-                        itemSelectionMode && !isSelected && styles.dimmedContent
-                      ]}>
-                        <Text style={styles.itemName}>
-                          {typeof item.category === "string"
-                            ? item.category
-                            : item.category?.name}
-                        </Text>
-                        {!isGridView && (
-                          <>
-                            <Text style={styles.itemCategory}>
-                              {getBrandLabel(item)}
-                            </Text>
-                            <Text style={styles.itemPrice}>₹{item.price}</Text>
-                            <Text style={styles.itemDate}>
-                              Added: {new Date(item.createdAt).toLocaleDateString()}
-                            </Text>
-                          </>
-                        )}
-                      </View>
+                      <Ionicons name="add-circle" size={20} color="#FFFFFF" />
+                      <Text style={styles.emptyAddBtnText}>Add Clothes to {wardrobeName}</Text>
                     </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          </ScrollView>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.gridContainer}>
+                  {sortedItems.map((item) => {
+                    const imagePath = getFirstItemImage(item);
+                    const isSelected = selectedItemIds.includes(item._id);
+                    const itemKey = `${item._id}-${renderVersion}-${isSelected ? 'selected' : 'normal'}`;
+
+                    return (
+                      <TouchableOpacity
+                        key={itemKey}
+                        activeOpacity={0.9}
+                        onPress={() =>
+                          itemSelectionMode
+                            ? toggleItemSelect(item._id)
+                            : router.push(`/wardrobe/item/${item._id}`)
+                        }
+                        onLongPress={() => {
+                          if (!itemSelectionMode) {
+                            setSelectedItemIds([item._id]);
+                          }
+                        }}
+                        style={[
+                          styles.gridItem,
+                          isSelected && styles.selectedItem,
+                        ]}
+                      >
+                        <View style={styles.imageContainer}>
+                          {imagePath ? (
+                            <Image
+                              key={`image-${itemKey}`}
+                              source={{ uri: imagePath }}
+                              style={[
+                                styles.gridImage,
+                                itemSelectionMode && !isSelected && { opacity: 0.3 }
+                              ]}
+                              resizeMode="cover"
+                              onError={(e) => console.log('Image error for', item._id, e.nativeEvent.error)}
+                            />
+                          ) : (
+                            <View style={styles.gridImagePlaceholder}>
+                              <Ionicons name="shirt-outline" size={36} color={colors.primary} />
+                            </View>
+                          )}
+
+                          {/* Selection indicator */}
+                          {itemSelectionMode && (
+                            <View style={[
+                              styles.selectionIndicator,
+                              isSelected ? styles.selectedIndicator : styles.unselectedIndicator
+                            ]}>
+                              {isSelected ? (
+                                <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                              ) : (
+                                <View style={[styles.unselectedCircle, { borderColor: colors.primary }]} />
+                              )}
+                            </View>
+                          )}
+                        </View>
+
+                        <View style={{ padding: 8 }}>
+                          <Text style={styles.itemName}>
+                            {typeof item.category === "string"
+                              ? item.category
+                              : item.category?.name}
+                          </Text>
+                          <Text style={styles.itemCategory}>
+                            {getBrandLabel(item)}
+                          </Text>
+                          <Text style={styles.itemPrice}>₹{item.price}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </ScrollView>
+          )}
 
           {/* Floating Action Button (FAB) */}
           {!isPublicView && !itemSelectionMode && (
