@@ -323,34 +323,40 @@ export default function ProfileScreen() {
     return imagePath ? resolveImageUrl(imagePath) : null;
   };
 
+  const fetchSavedItems = async () => {
+    try {
+      const storedToken = token || (await storage.getItem("token"));
+      if (!storedToken) return;
+      const res = await api.get("/api/saved/me", {
+        headers: { Authorization: `Bearer ${storedToken}` },
+      });
+      const cleanSavedItems = (res.data || []).filter((s: any) => s && s.item && s.item._id);
+      setSavedItems(cleanSavedItems);
+    } catch (err) {
+      console.log("Failed to load saved items", err);
+    }
+  };
+
   useEffect(() => {
-    if (activeTab !== "savedItems") return;
-    const loadSavedItems = async () => {
-      try {
-        const token = await storage.getItem("token");
-        if (!token) return;
-        const res = await api.get("/api/saved/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const cleanSavedItems = (res.data || []).filter((s: any) => s && s.item && s.item._id);
-        setSavedItems(cleanSavedItems);
-      } catch (err) {
-        console.log("Failed to load saved items", err);
-        setSavedItems([]);
-      }
-    };
-    loadSavedItems();
+    fetchSavedItems();
   }, [activeTab, savedItemIds]);
 
   useEffect(() => {
-    if (activeTab !== "savedItems") return;
+    if (activeTab !== "savedItems" || savedItems.length === 0) return;
     const loadLikes = async () => {
-      const counts: Record<string, number> = {};
-      for (const saved of savedItems) {
-        const itemId = saved.item._id;
-        counts[itemId] = await fetchLikeCount(itemId);
+      try {
+        const counts: Record<string, number> = {};
+        await Promise.all(
+          savedItems.map(async (saved) => {
+            if (saved?.item?._id) {
+              counts[saved.item._id] = await fetchLikeCount(saved.item._id);
+            }
+          })
+        );
+        setLikeCounts(counts);
+      } catch (err) {
+        console.log("Failed to load likes for saved items", err);
       }
-      setLikeCounts(counts);
     };
     loadLikes();
   }, [savedItems, activeTab]);
@@ -503,21 +509,25 @@ export default function ProfileScreen() {
     if (!isLoading && isAuthenticated && token) {
       fetchProfileData();
       fetchMatchedPairs();
+      fetchSavedItems();
     }
   }, [isLoading, isAuthenticated, token]);
 
   useFocusEffect(
     useCallback(() => {
       if (!isLoading && isAuthenticated) {
+        fetchProfileData();
         fetchMatchedPairs();
+        fetchSavedItems();
       }
-    }, [isLoading, isAuthenticated])
+    }, [isLoading, isAuthenticated, token])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchProfileData();
     fetchMatchedPairs();
+    fetchSavedItems();
   };
 
   const handleWardrobePress = (wardrobe: Wardrobe) => {
@@ -1031,9 +1041,11 @@ useEffect(() => {
                   <View style={styles.savedGrid}>
                     {savedItems.map((saved) => {
                       if (!saved.item) return null;
-                      const imagePath = saved.item.images?.length && saved.item.images[0]
-                        ? saved.item.images[0]
-                        : saved.item.imageUrl;
+                      const imagePath =
+                        (saved.item.images?.length && saved.item.images[0]) ||
+                        saved.item.cutoutImage ||
+                        saved.item.imageUrl ||
+                        saved.item.image;
                       const itemData = {
                         _id: saved.item._id,
                         name: saved.item.name || "Item",
