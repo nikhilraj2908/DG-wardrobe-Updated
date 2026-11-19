@@ -183,6 +183,9 @@ export default function MatchPairScreen() {
   const [canvasGarments, setCanvasGarments] = useState<CanvasGarment[]>([]);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
 
+  // Existing outfit id when editing an existing pair from profile
+  const [existingOutfitId, setExistingOutfitId] = useState<string | null>(params?.outfitId || null);
+
   // User's catalog of uploaded clothes
   const [allItems, setAllItems] = useState<WardrobeItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -201,6 +204,7 @@ export default function MatchPairScreen() {
   // Load existing outfit if restyling from profile
   useEffect(() => {
     if (params?.outfitId) {
+      setExistingOutfitId(params.outfitId);
       loadExistingOutfit(params.outfitId);
     }
   }, [params?.outfitId]);
@@ -215,6 +219,7 @@ export default function MatchPairScreen() {
       const target = (res.data.outfits || []).find((o: any) => o._id === id);
       if (!target || !target.items || target.items.length === 0) return;
 
+      setExistingOutfitId(target._id);
       if (target.name) {
         setOutfitName(target.name);
       }
@@ -371,6 +376,8 @@ export default function MatchPairScreen() {
         onPress: () => {
           setCanvasGarments([]);
           setSelectedInstanceId(null);
+          setExistingOutfitId(null);
+          setOutfitName("");
         },
       },
     ]);
@@ -494,7 +501,10 @@ export default function MatchPairScreen() {
       return;
     }
 
-    setOutfitName("");
+    // Keep existing outfit name if already set, or provide a default
+    if (!outfitName || !outfitName.trim()) {
+      setOutfitName(`Pair ${new Date().toLocaleDateString()}`);
+    }
     setSaveModalVisible(true);
   };
 
@@ -508,7 +518,7 @@ export default function MatchPairScreen() {
       }
 
       const payload = {
-        name: outfitName.trim() || `Pair ${new Date().toLocaleDateString()}`,
+        name: outfitName.trim() || (existingOutfitId ? "My Matched Pair" : `Pair ${new Date().toLocaleDateString()}`),
         items: canvasGarments.map((g) => ({
           itemId: g.item._id,
           x: g.x,
@@ -520,14 +530,28 @@ export default function MatchPairScreen() {
         })),
       };
 
-      const res = await api.post("/api/outfits", payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      let res;
+      const isUpdating = Boolean(existingOutfitId);
+
+      if (existingOutfitId) {
+        // Update existing matched pair in-place!
+        res = await api.put(`/api/outfits/${existingOutfitId}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else {
+        // Create new matched pair
+        res = await api.post("/api/outfits", payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data?.outfit?._id) {
+          setExistingOutfitId(res.data.outfit._id);
+        }
+      }
 
       setSaveModalVisible(false);
       Alert.alert(
-        "Pair Saved! 🎉",
-        `"${res.data.outfit?.name || "Matched Pair"}" has been saved to your wardrobe profile.`,
+        isUpdating ? "Pair Updated! 🎉" : "Pair Saved! 🎉",
+        `"${res.data?.outfit?.name || outfitName.trim() || "Matched Pair"}" has been ${isUpdating ? "updated" : "saved"} in your wardrobe profile.`,
         [
           {
             text: "View Profile",
@@ -561,7 +585,9 @@ export default function MatchPairScreen() {
             </TouchableOpacity>
 
             <View style={{ alignItems: "center" }}>
-              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Match Pair Studio</Text>
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+                {existingOutfitId ? "Edit Matched Pair" : "Match Pair Studio"}
+              </Text>
               <Text style={styles.headerSubtitle}>
                 {canvasGarments.length === 0
                   ? "Select items to build a pair"
@@ -600,7 +626,7 @@ export default function MatchPairScreen() {
                     { color: canvasGarments.length > 0 ? "#FFFFFF" : colors.textMuted },
                   ]}
                 >
-                  Save Pair
+                  {existingOutfitId ? "Update" : "Save Pair"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -923,10 +949,12 @@ export default function MatchPairScreen() {
                     <Ionicons name="sparkles" size={24} color={colors.primary} />
                   </View>
                   <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-                    Name Your Matched Pair
+                    {existingOutfitId ? "Update Matched Pair" : "Name Your Matched Pair"}
                   </Text>
                   <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>
-                    Save this combination to your wardrobe profile for quick access.
+                    {existingOutfitId
+                      ? "Save changes to this pair in your wardrobe profile."
+                      : "Save this combination to your wardrobe profile for quick access."}
                   </Text>
                 </View>
 
@@ -966,7 +994,9 @@ export default function MatchPairScreen() {
                     {savingOutfit ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.modalConfirmText}>Save Pair</Text>
+                      <Text style={styles.modalConfirmText}>
+                        {existingOutfitId ? "Update Pair" : "Save Pair"}
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </View>
