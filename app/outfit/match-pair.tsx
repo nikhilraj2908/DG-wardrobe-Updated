@@ -31,6 +31,7 @@ interface WardrobeItem {
   images?: string[];
   imageUrl?: string;
   image?: string;
+  cutoutImage?: string;
   brand?: string;
   price?: number;
   category?: {
@@ -110,6 +111,7 @@ const DraggableGarment: React.FC<DraggableGarmentProps> = ({
   ).current;
 
   const rawImg =
+    garment.item.cutoutImage ||
     (Array.isArray(garment.item.images) && garment.item.images[0]) ||
     garment.item.imageUrl ||
     garment.item.image ||
@@ -393,6 +395,56 @@ export default function MatchPairScreen() {
   };
 
   /* =========================================================
+     REMOVE BACKGROUND & GENERATE TRANSPARENT CUTOUT PNG
+  ========================================================= */
+  const [generatingCutout, setGeneratingCutout] = useState(false);
+
+  const handleGenerateCutoutForSelected = async () => {
+    if (!activeGarment || !activeGarment.item?._id) return;
+    try {
+      setGeneratingCutout(true);
+      const token = await storage.getItem("token");
+      if (!token) {
+        Alert.alert("Authentication", "Please login again.");
+        return;
+      }
+
+      const res = await api.post(
+        `/api/wardrobe/item/${activeGarment.item._id}/cutout`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.cutoutImage) {
+        const newCutout = res.data.cutoutImage;
+        // Update canvas garments with the new cutout
+        setCanvasGarments((prev) =>
+          prev.map((g) =>
+            g.instanceId === activeGarment.instanceId
+              ? { ...g, item: { ...g.item, cutoutImage: newCutout } }
+              : g
+          )
+        );
+        // Also update allItems shelf cache
+        setAllItems((prev) =>
+          prev.map((it) =>
+            it._id === activeGarment.item._id ? { ...it, cutoutImage: newCutout } : it
+          )
+        );
+        Alert.alert("Success! ✨", "Background removed! Enjoy your transparent garment cutout.");
+      }
+    } catch (err: any) {
+      console.error("Error generating cutout:", err);
+      Alert.alert(
+        "Notice",
+        err.response?.data?.message || "Could not generate transparent cutout."
+      );
+    } finally {
+      setGeneratingCutout(false);
+    }
+  };
+
+  /* =========================================================
      SAVE OUTFIT / MATCHED PAIR
   ========================================================= */
   const handleSaveOutfit = async () => {
@@ -638,6 +690,32 @@ export default function MatchPairScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
+
+                {/* Background Cutout (Remove BG) */}
+                <View style={styles.controlGroup}>
+                  <Text style={styles.controlLabel}>Cutout</Text>
+                  {activeGarment.item.cutoutImage ? (
+                    <View style={styles.cutoutReadyBadge}>
+                      <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                      <Text style={styles.cutoutReadyText}>PNG</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.removeBgBtn, { backgroundColor: colors.primary }]}
+                      onPress={handleGenerateCutoutForSelected}
+                      disabled={generatingCutout}
+                    >
+                      {generatingCutout ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Ionicons name="cut" size={12} color="#FFFFFF" style={{ marginRight: 3 }} />
+                          <Text style={styles.removeBgBtnText}>No BG</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
           ) : null}
@@ -706,6 +784,7 @@ export default function MatchPairScreen() {
               >
                 {filteredItems.map((item) => {
                   const raw =
+                    item.cutoutImage ||
                     (Array.isArray(item.images) && item.images[0]) ||
                     item.imageUrl ||
                     item.image ||
@@ -723,6 +802,11 @@ export default function MatchPairScreen() {
                       onPress={() => handleAddItemToCanvas(item)}
                       activeOpacity={0.8}
                     >
+                      {item.cutoutImage ? (
+                        <View style={styles.cutoutPillShelf}>
+                          <Text style={styles.cutoutPillShelfText}>PNG</Text>
+                        </View>
+                      ) : null}
                       {resolved ? (
                         <Image source={{ uri: resolved }} style={styles.shelfImage} resizeMode="contain" />
                       ) : (
@@ -991,6 +1075,32 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
+  cutoutReadyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+  },
+  cutoutReadyText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#10B981",
+  },
+  removeBgBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  removeBgBtnText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
 
   /* Category Selector */
   categorySection: {
@@ -1070,6 +1180,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+  },
+  cutoutPillShelf: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    backgroundColor: "#10B981",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
+    zIndex: 10,
+  },
+  cutoutPillShelfText: {
+    fontSize: 8,
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
   shelfImage: {
     width: 75,
