@@ -15,7 +15,7 @@ import {
   PanResponder,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/app/theme/ThemeContext";
 import api from "@/api/api";
@@ -172,6 +172,7 @@ const DraggableGarment: React.FC<DraggableGarmentProps> = ({
 ========================================================= */
 export default function MatchPairScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ outfitId?: string }>();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const colors = theme.colors;
@@ -194,6 +195,47 @@ export default function MatchPairScreen() {
   useEffect(() => {
     fetchMyClothes();
   }, []);
+
+  // Load existing outfit if restyling from profile
+  useEffect(() => {
+    if (params?.outfitId) {
+      loadExistingOutfit(params.outfitId);
+    }
+  }, [params?.outfitId]);
+
+  const loadExistingOutfit = async (id: string) => {
+    try {
+      const token = await storage.getItem("token");
+      if (!token) return;
+      const res = await api.get("/api/outfits/my", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const target = (res.data.outfits || []).find((o: any) => o._id === id);
+      if (!target || !target.items || target.items.length === 0) return;
+
+      if (target.name) {
+        setOutfitName(target.name);
+      }
+
+      const garmentsToLoad: CanvasGarment[] = target.items.map((slot: any, idx: number) => ({
+        instanceId: `canvas_${Date.now()}_${idx}`,
+        item: slot.item,
+        x: typeof slot.x === "number" ? slot.x : Math.max(10, (SCREEN_WIDTH - 200) / 2),
+        y: typeof slot.y === "number" ? slot.y : idx === 0 ? 30 : idx === 1 ? 190 : 280,
+        width: slot.width || 170,
+        height: slot.height || 170,
+        scale: slot.scale || 1,
+        zIndex: slot.zIndex || idx + 1,
+      }));
+
+      setCanvasGarments(garmentsToLoad);
+      if (garmentsToLoad.length > 0) {
+        setSelectedInstanceId(garmentsToLoad[0].instanceId);
+      }
+    } catch (err) {
+      console.log("Error loading existing outfit for restyle:", err);
+    }
+  };
 
   const fetchMyClothes = async () => {
     try {
@@ -1135,3 +1177,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+
