@@ -635,14 +635,6 @@ export default function AllWardrobeItemsScreen() {
             </TouchableOpacity>
             <Text style={styles.headerTitle}>All Items</Text>
             <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.headerAddBtn}
-                onPress={() => router.push("/add-wardrobe")}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
-                <Text style={styles.headerAddBtnText}>Add</Text>
-              </TouchableOpacity>
               <TouchableOpacity onPress={() => setIsGridView(!isGridView)}>
                 <Ionicons
                   name={isGridView ? "grid-outline" : "list-outline"}
@@ -968,20 +960,6 @@ const createStyles = (colors: any) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
-    },
-    headerAddBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.primary,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 18,
-      gap: 4,
-    },
-    headerAddBtnText: {
-      color: "#FFFFFF",
-      fontSize: 13,
-      fontWeight: "700",
     },
     fabBtn: {
       position: "absolute",
