@@ -1,9 +1,9 @@
 // app/wardrobe/[id].tsx
 import AppBackground from "@/components/AppBackground";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState, useMemo } from "react";
+import { storage } from "@/utils/storage";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -69,7 +69,7 @@ export default function WardrobeDetailsScreen() {
 
   const fetchWardrobes = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       const res = await api.get("/api/wardrobe/list", {
@@ -117,7 +117,7 @@ export default function WardrobeDetailsScreen() {
   };
 
   const deleteSingleItem = async () => {
-    const token = await AsyncStorage.getItem("token");
+    const token = await storage.getItem("token");
     await api.delete(`/api/wardrobe/item/${selectedItemIds[0]}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -126,7 +126,7 @@ export default function WardrobeDetailsScreen() {
   };
 
   const deleteMultipleItems = async () => {
-    const token = await AsyncStorage.getItem("token");
+    const token = await storage.getItem("token");
     await api.delete("/api/wardrobe/items/bulk-delete", {
       headers: { Authorization: `Bearer ${token}` },
       data: { itemIds: selectedItemIds },
@@ -149,7 +149,7 @@ export default function WardrobeDetailsScreen() {
     try {
       setLoading(true);
 
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
 
       if (isPublicView) {
         const res = await api.get(`/api/wardrobe/${wardrobeId}/items`);
@@ -186,7 +186,7 @@ export default function WardrobeDetailsScreen() {
   const handleMoveToWardrobe = async (targetWardrobeId: string, targetName: string) => {
     try {
       setMoving(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       if (selectedItemIds.length === 1) {
@@ -225,10 +225,22 @@ export default function WardrobeDetailsScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchItems();
-    fetchWardrobes();
-  }, [wardrobeId, isPublicView]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchItems();
+      fetchWardrobes();
+    }, [wardrobeId, isPublicView])
+  );
+
+  const handleAddClothes = () => {
+    router.push({
+      pathname: "/add-wardrobe",
+      params: {
+        wardrobeName,
+        wardrobeId,
+      },
+    });
+  };
 
   const sortedItems = [...items].sort((a, b) => {
     switch (sortBy) {
@@ -259,16 +271,26 @@ export default function WardrobeDetailsScreen() {
         <View style={{ flex: 1 }}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{wardrobeName}</Text>
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <TouchableOpacity onPress={() => setIsGridView(!isGridView)}>
-                <Ionicons name={isGridView ? "grid-outline" : "list-outline"} size={24} color={colors.textPrimary} />
+            <Text style={styles.headerTitle} numberOfLines={1}>{wardrobeName}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {!isPublicView && (
+                <TouchableOpacity
+                  style={styles.headerAddBtn}
+                  onPress={handleAddClothes}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add" size={18} color="#FFFFFF" />
+                  <Text style={styles.headerAddBtnText}>Add</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => setIsGridView(!isGridView)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Ionicons name={isGridView ? "grid-outline" : "list-outline"} size={22} color={colors.textPrimary} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setSortModalVisible(true)}>
-                <Ionicons name="filter-outline" size={24} color={colors.primary} />
+              <TouchableOpacity onPress={() => setSortModalVisible(true)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Ionicons name="filter-outline" size={22} color={colors.primary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -310,14 +332,39 @@ export default function WardrobeDetailsScreen() {
             </View>
           )}
 
-          <Text style={styles.itemCountText}>{items.length} items in this wardrobe</Text>
+          <Text style={styles.itemCountText}>{items.length} {items.length === 1 ? "item" : "items"} in this wardrobe</Text>
 
-          <ScrollView key={renderVersion} style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-            <View style={isGridView ? styles.gridContainer : undefined}>
-              {loading ? (
-                <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: 20 }} />
-              ) : (
-                sortedItems.map((item) => {
+          <ScrollView
+            key={renderVersion}
+            style={{ padding: 16 }}
+            contentContainerStyle={{ paddingBottom: 110 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: 40 }} />
+            ) : sortedItems.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconCircle}>
+                  <Ionicons name="shirt-outline" size={44} color={colors.primary} />
+                </View>
+                <Text style={styles.emptyTitle}>This wardrobe is empty</Text>
+                <Text style={styles.emptySubtitle}>
+                  Add clothes and outfits directly to your "{wardrobeName}" collection.
+                </Text>
+                {!isPublicView && (
+                  <TouchableOpacity
+                    style={styles.emptyAddBtn}
+                    onPress={handleAddClothes}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="add-circle" size={20} color="#FFFFFF" />
+                    <Text style={styles.emptyAddBtnText}>Add Clothes to {wardrobeName}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <View style={isGridView ? styles.gridContainer : undefined}>
+                {sortedItems.map((item) => {
                   const imagePath = getFirstItemImage(item);
                   const isSelected = selectedItemIds.includes(item._id);
                   const itemKey = `${item._id}-${renderVersion}-${isSelected ? 'selected' : 'normal'}`;
@@ -397,10 +444,22 @@ export default function WardrobeDetailsScreen() {
                       </View>
                     </TouchableOpacity>
                   );
-                })
-              )}
-            </View>
+                })}
+              </View>
+            )}
           </ScrollView>
+
+          {/* Floating Action Button (FAB) */}
+          {!isPublicView && !itemSelectionMode && (
+            <TouchableOpacity
+              style={styles.fabBtn}
+              onPress={handleAddClothes}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add" size={22} color="#FFFFFF" />
+              <Text style={styles.fabBtnText}>Add Clothes</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Sort Modal */}
           <Modal animationType="slide" transparent visible={sortModalVisible} onRequestClose={() => setSortModalVisible(false)}>
@@ -709,5 +768,90 @@ const createStyles = (colors: any) =>
     moveWardrobeText: {
       fontSize: 15,
       fontWeight: "600",
+    },
+    headerAddBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 18,
+      gap: 4,
+    },
+    headerAddBtnText: {
+      color: "#FFFFFF",
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    fabBtn: {
+      position: "absolute",
+      bottom: 24,
+      right: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderRadius: 30,
+      gap: 8,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 6,
+      zIndex: 99,
+    },
+    fabBtnText: {
+      color: "#FFFFFF",
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    emptyContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 60,
+      paddingHorizontal: 24,
+    },
+    emptyIconCircle: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.card,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    emptySubtitle: {
+      fontSize: 14,
+      color: colors.textMuted,
+      textAlign: "center",
+      marginBottom: 24,
+      lineHeight: 20,
+    },
+    emptyAddBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.primary,
+      paddingHorizontal: 22,
+      paddingVertical: 12,
+      borderRadius: 24,
+      gap: 8,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.3,
+      shadowRadius: 5,
+      elevation: 4,
+    },
+    emptyAddBtnText: {
+      color: "#FFFFFF",
+      fontSize: 15,
+      fontWeight: "700",
     },
   });

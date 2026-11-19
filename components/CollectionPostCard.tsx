@@ -254,15 +254,27 @@ export default function CollectionPostCard({ item }: CollectionPostCardProps) {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={closeGate}
-              activeOpacity={0.8}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="close" size={16} color="#fff" />
-              <Text style={styles.closeBtnText}>Close</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <TouchableOpacity
+                style={styles.addClothesBtn}
+                onPress={() => router.push("/add-wardrobe")}
+                activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={styles.addClothesBtnText}>Add</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.closeBtn}
+                onPress={closeGate}
+                activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={16} color="#fff" />
+                <Text style={styles.closeBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Items Content */}
@@ -347,6 +359,14 @@ export default function CollectionPostCard({ item }: CollectionPostCardProps) {
               <Text style={styles.emptyInteriorSub}>
                 No visible items found in this wardrobe
               </Text>
+              <TouchableOpacity
+                style={styles.emptyAddBtn}
+                onPress={() => router.push("/add-wardrobe")}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add-circle" size={16} color="#fff" />
+                <Text style={styles.emptyAddBtnText}>Add Clothes</Text>
+              </TouchableOpacity>
             </View>
           )}
         </Animated.View>
@@ -769,13 +789,27 @@ const createStyles = (colors: any) =>
     closeBtn: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.primary,
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
       paddingHorizontal: 10,
       paddingVertical: 6,
       borderRadius: 14,
       gap: 4,
     },
     closeBtnText: {
+      color: "#ffffff",
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    addClothesBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.primary,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 14,
+      gap: 4,
+    },
+    addClothesBtnText: {
       color: "#ffffff",
       fontSize: 12,
       fontWeight: "600",
@@ -878,5 +912,21 @@ const createStyles = (colors: any) =>
       fontSize: 12,
       color: "rgba(255, 255, 255, 0.6)",
       textAlign: "center",
+      marginBottom: 12,
+    },
+    emptyAddBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.primary,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 16,
+      gap: 6,
+      marginTop: 4,
+    },
+    emptyAddBtnText: {
+      color: "#ffffff",
+      fontSize: 12,
+      fontWeight: "700",
     },
   });

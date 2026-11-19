@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useTheme } from "@/app/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import ImagePicker from "react-native-image-crop-picker";
@@ -187,12 +187,17 @@ export default function AddWardrobe() {
 
     useFocusEffect(
         useCallback(() => {
+            const targetWardrobe = (params.wardrobeName as string) || (params.wardrobe as string);
+            if (targetWardrobe && targetWardrobe.trim().length > 0) {
+                setWardrobe(targetWardrobe.trim());
+                setShowOtherWardrobeInput(false);
+            }
             return () => {
                 if (!isEdit) {
                     resetForm();
                 }
             };
-        }, [isEdit])
+        }, [isEdit, params.wardrobeName, params.wardrobe])
     );
 
     useEffect(() => {
@@ -214,7 +219,7 @@ export default function AddWardrobe() {
         const fetchItem = async () => {
             try {
                 setLoading(true);
-                const token = await AsyncStorage.getItem("token");
+                const token = await storage.getItem("token");
                 const res = await api.get(`/api/wardrobe/item/${itemId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -287,7 +292,7 @@ export default function AddWardrobe() {
     const fetchCategories = async () => {
         try {
             setLoadingCategories(true);
-            const token = await AsyncStorage.getItem("token");
+            const token = await storage.getItem("token");
             const [exploreRes, userRes] = await Promise.all([
                 api.get("/api/categories"),
                 api.get("/api/categories/user", {
@@ -309,7 +314,7 @@ export default function AddWardrobe() {
 
     const createNewCategory = async (categoryName: string, type: "mens" | "womens" | "unisex") => {
         try {
-            const token = await AsyncStorage.getItem("token");
+            const token = await storage.getItem("token");
             if (!token) {
                 Alert.alert("Error", "Please login to create categories");
                 return null;
@@ -345,7 +350,7 @@ export default function AddWardrobe() {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            const token = await AsyncStorage.getItem("token");
+                            const token = await storage.getItem("token");
                             if (!token) {
                                 Alert.alert("Error", "Please login to delete categories");
                                 return;
@@ -375,7 +380,7 @@ export default function AddWardrobe() {
     const fetchUserWardrobes = async () => {
         try {
             setLoadingWardrobes(true);
-            const token = await AsyncStorage.getItem("token");
+            const token = await storage.getItem("token");
             if (!token) return;
             const response = await api.get("/api/wardrobe/list", {
                 headers: { Authorization: `Bearer ${token}` },
@@ -537,7 +542,7 @@ export default function AddWardrobe() {
 
         try {
             setLoading(true);
-            const token = await AsyncStorage.getItem("token");
+            const token = await storage.getItem("token");
             if (!token) {
                 Alert.alert("Error", "Token not found. Please login again.");
                 return;

@@ -2,7 +2,7 @@
 import AppBackground from "@/components/AppBackground";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -168,7 +168,7 @@ export default function AllWardrobeItemsScreen() {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
 
       let res;
 
@@ -234,7 +234,7 @@ export default function AllWardrobeItemsScreen() {
 
   const fetchWardrobes = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
       const res = await api.get("/api/wardrobe/list", {
         headers: { Authorization: `Bearer ${token}` },
@@ -269,7 +269,7 @@ export default function AllWardrobeItemsScreen() {
   };
 
   const deleteSingleItem = async () => {
-    const token = await AsyncStorage.getItem("token");
+    const token = await storage.getItem("token");
     await api.delete(`/api/wardrobe/item/${selectedItemIds[0]}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -278,7 +278,7 @@ export default function AllWardrobeItemsScreen() {
   };
 
   const deleteMultipleItems = async () => {
-    const token = await AsyncStorage.getItem("token");
+    const token = await storage.getItem("token");
     await api.delete("/api/wardrobe/items/bulk-delete", {
       headers: { Authorization: `Bearer ${token}` },
       data: { itemIds: selectedItemIds },
@@ -290,7 +290,7 @@ export default function AllWardrobeItemsScreen() {
   const handleMoveToWardrobe = async (targetWardrobeId: string, targetName: string) => {
     try {
       setMoving(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       if (selectedItemIds.length === 1) {
@@ -635,10 +635,18 @@ export default function AllWardrobeItemsScreen() {
             </TouchableOpacity>
             <Text style={styles.headerTitle}>All Items</Text>
             <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.headerAddBtn}
+                onPress={() => router.push("/add-wardrobe")}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <Text style={styles.headerAddBtnText}>Add</Text>
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => setIsGridView(!isGridView)}>
                 <Ionicons
                   name={isGridView ? "grid-outline" : "list-outline"}
-                  size={24}
+                  size={22}
                   color={isGridView ? colors.primary : colors.textMuted}
                 />
               </TouchableOpacity>
@@ -917,6 +925,18 @@ export default function AllWardrobeItemsScreen() {
               </View>
             </View>
           </Modal>
+
+          {/* Floating Action Button (FAB) */}
+          {!itemSelectionMode && (
+            <TouchableOpacity
+              style={styles.fabBtn}
+              onPress={() => router.push("/add-wardrobe")}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add" size={22} color="#FFFFFF" />
+              <Text style={styles.fabBtnText}>Add Clothes</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </AppBackground>
     </SafeAreaView>
@@ -945,7 +965,44 @@ const createStyles = (colors: any) =>
     headerActions: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 16,
+      gap: 12,
+    },
+    headerAddBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 18,
+      gap: 4,
+    },
+    headerAddBtnText: {
+      color: "#FFFFFF",
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    fabBtn: {
+      position: "absolute",
+      bottom: 24,
+      right: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderRadius: 30,
+      gap: 8,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 6,
+      zIndex: 99,
+    },
+    fabBtnText: {
+      color: "#FFFFFF",
+      fontSize: 15,
+      fontWeight: "700",
     },
     sortButton: {
       flexDirection: "row",
