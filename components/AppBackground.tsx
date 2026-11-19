@@ -1,4 +1,5 @@
 // components/AppBackground.tsx
+import { useTheme } from "@/app/theme/ThemeContext";
 import React, { ReactNode } from "react";
 import { ImageBackground, StyleSheet, View } from "react-native";
 
@@ -7,14 +8,30 @@ type AppBackgroundProps = {
 };
 
 export default function AppBackground({ children }: AppBackgroundProps) {
+  const { currentId, theme } = useTheme();
+  const isDark = currentId === "dark";
+
+  const bgSource = isDark
+    ? require("../assets/images/bgallpage-dark.png")
+    : require("../assets/images/bgallpage.png");
+
   return (
-    <View style={styles.base}>
+    <View style={[styles.base, { backgroundColor: theme.colors.background }]}>
       <ImageBackground
-        source={require("../assets/images/bgallpage.png")}
+        source={bgSource}
         style={styles.background}
         resizeMode="cover"
       >
-        <View style={styles.overlay} />
+        <View
+          style={[
+            styles.overlay,
+            {
+              backgroundColor: isDark
+                ? "rgba(0, 0, 0, 0.35)"
+                : "rgba(255, 255, 255, 0.05)",
+            },
+          ]}
+        />
         {children}
       </ImageBackground>
     </View>
@@ -24,7 +41,6 @@ export default function AppBackground({ children }: AppBackgroundProps) {
 const styles = StyleSheet.create({
   base: {
     flex: 1,
-    backgroundColor: "#FFFFFF", // ✅ prevents black bleed
   },
   background: {
     flex: 1,
@@ -33,6 +49,5 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(255,255,255,0.05)",
   },
 });

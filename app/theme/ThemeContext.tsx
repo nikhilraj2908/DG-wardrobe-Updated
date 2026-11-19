@@ -6,15 +6,24 @@ type ThemeType = typeof theme;
 
 const THEME_MAP: Record<string, ThemeType> = {
   light: theme,
-  dark: darkTheme,
-  purple: theme,   // your default purple theme
-  blue: blueTheme,
+  purple: theme,   // default purple theme
+  dark: darkTheme, // dark theme
+  blue: blueTheme, // yellow / gold theme (historical id: blue)
+  yellow: blueTheme,
 };
 
-const ThemeContext = createContext({
+interface ThemeContextValue {
+  theme: ThemeType;
+  setThemeById: (id: string) => Promise<void>;
+  currentId: string;
+  isDarkMode: boolean;
+}
+
+const ThemeContext = createContext<ThemeContextValue>({
   theme: theme,
-  setThemeById: async (id: string) => {},
+  setThemeById: async () => {},
   currentId: "purple",
+  isDarkMode: false,
 });
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
@@ -27,11 +36,14 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const loadTheme = async () => {
-    const saved = await AsyncStorage.getItem("APP_THEME");
-
-    if (saved && THEME_MAP[saved]) {
-      setThemeState(THEME_MAP[saved]);
-      setCurrentId(saved);
+    try {
+      const saved = await AsyncStorage.getItem("APP_THEME");
+      if (saved && THEME_MAP[saved]) {
+        setThemeState(THEME_MAP[saved]);
+        setCurrentId(saved);
+      }
+    } catch (e) {
+      console.log("Failed to load theme from storage", e);
     }
   };
 
@@ -42,7 +54,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
     setThemeState(selected);
     setCurrentId(id);
-    await AsyncStorage.setItem("APP_THEME", id);
+    await AsyncStorage.setItem("APP_THEME", id).catch(() => {});
   };
 
   return (
@@ -51,6 +63,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
         theme: themeState,
         setThemeById,
         currentId,
+        isDarkMode: currentId === "dark",
       }}
     >
       {children}
