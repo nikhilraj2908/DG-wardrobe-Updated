@@ -239,6 +239,27 @@ export default function MatchPairScreen() {
     }
   };
 
+  // Synchronize canvas garments with allItems to ensure any cutout updates are reflected
+  useEffect(() => {
+    if (allItems.length > 0 && canvasGarments.length > 0) {
+      setCanvasGarments((prev) =>
+        prev.map((g) => {
+          const fresh = allItems.find((it) => it._id === (g.item?._id || (g.item as any)));
+          if (fresh?.cutoutImage && g.item?.cutoutImage !== fresh.cutoutImage) {
+            return {
+              ...g,
+              item: {
+                ...g.item,
+                cutoutImage: fresh.cutoutImage,
+              },
+            };
+          }
+          return g;
+        })
+      );
+    }
+  }, [allItems]);
+
   const fetchMyClothes = async () => {
     try {
       setLoadingItems(true);
@@ -399,8 +420,8 @@ export default function MatchPairScreen() {
   ========================================================= */
   const [generatingCutout, setGeneratingCutout] = useState(false);
 
-  const handleGenerateCutoutForSelected = async () => {
-    if (!activeGarment || !activeGarment.item?._id) return;
+  const handleGenerateCutoutForGarment = async (garment: CanvasGarment) => {
+    if (!garment || !garment.item?._id) return;
     try {
       setGeneratingCutout(true);
       const token = await storage.getItem("token");
@@ -410,7 +431,7 @@ export default function MatchPairScreen() {
       }
 
       const res = await api.post(
-        `/api/wardrobe/item/${activeGarment.item._id}/cutout`,
+        `/api/wardrobe/item/${garment.item._id}/cutout`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -420,7 +441,7 @@ export default function MatchPairScreen() {
         // Update canvas garments with the new cutout
         setCanvasGarments((prev) =>
           prev.map((g) =>
-            g.instanceId === activeGarment.instanceId
+            g.instanceId === garment.instanceId || g.item._id === garment.item._id
               ? { ...g, item: { ...g.item, cutoutImage: newCutout } }
               : g
           )
@@ -428,7 +449,7 @@ export default function MatchPairScreen() {
         // Also update allItems shelf cache
         setAllItems((prev) =>
           prev.map((it) =>
-            it._id === activeGarment.item._id ? { ...it, cutoutImage: newCutout } : it
+            it._id === garment.item._id ? { ...it, cutoutImage: newCutout } : it
           )
         );
         Alert.alert("Success! ✨", "Background removed! Enjoy your transparent garment cutout.");
@@ -441,6 +462,26 @@ export default function MatchPairScreen() {
       );
     } finally {
       setGeneratingCutout(false);
+    }
+  };
+
+  const handleGenerateCutoutForSelected = () => {
+    if (activeGarment) {
+      handleGenerateCutoutForGarment(activeGarment);
+    }
+  };
+
+  const handleTopRightNoBgPress = () => {
+    if (activeGarment) {
+      handleGenerateCutoutForGarment(activeGarment);
+      return;
+    }
+    // If no active garment selected, choose the first canvas garment without cutout, or the last one
+    const target =
+      canvasGarments.find((g) => !g.item.cutoutImage) || canvasGarments[canvasGarments.length - 1];
+    if (target) {
+      setSelectedInstanceId(target.instanceId);
+      handleGenerateCutoutForGarment(target);
     }
   };
 
@@ -566,18 +607,21 @@ export default function MatchPairScreen() {
           </View>
 
           {/* ================= CANVASS (FITTING ROOM) ================= */}
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setSelectedInstanceId(null)}
-            style={[styles.canvasContainer, { backgroundColor: colors.surface }]}
-          >
+          <View style={[styles.canvasContainer, { backgroundColor: colors.surface }]}>
+            {/* Background tap to deselect */}
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => setSelectedInstanceId(null)}
+              style={StyleSheet.absoluteFill}
+            />
+
             {/* Studio Guide Silhouette / Grid Hint */}
             <View style={styles.canvasBackgroundGuide}>
               <Ionicons name="body-outline" size={130} color={colors.border} style={{ opacity: 0.15 }} />
             </View>
 
             {canvasGarments.length === 0 ? (
-              <View style={styles.emptyCanvasNotice}>
+              <View style={styles.emptyCanvasNotice} pointerEvents="none">
                 <Ionicons name="shirt-outline" size={42} color={colors.primary} style={{ opacity: 0.6 }} />
                 <Text style={[styles.emptyCanvasTitle, { color: colors.textPrimary }]}>
                   Your Canvas is Empty
@@ -600,7 +644,66 @@ export default function MatchPairScreen() {
                 primaryColor={colors.primary}
               />
             ))}
-          </TouchableOpacity>
+
+            {/* Top-Right "No BG" Floating Action Button on Canvas */}
+            <View style={styles.canvasTopRightContainer} pointerEvents="box-none">
+              {canvasGarments.length === 0 ? (
+                <TouchableOpacity
+                  style={[styles.canvasRemoveBgBtnDisabled, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => Alert.alert("No BG", "Add an item onto the canvas first to remove its background.")}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="cut-outline" size={13} color={colors.textMuted || "#888"} />
+                  <Text style={[styles.canvasRemoveBgTextDisabled, { color: colors.textMuted || "#888" }]}>No BG</Text>
+                </TouchableOpacity>
+              ) : activeGarment ? (
+                activeGarment.item.cutoutImage ? (
+                  <View style={styles.canvasCutoutActiveBadge}>
+                    <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                    <Text style={styles.canvasCutoutActiveText}>No BG (PNG)</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.canvasRemoveBgBtn, { backgroundColor: colors.primary || "#4F46E5" }]}
+                    onPress={handleGenerateCutoutForSelected}
+                    disabled={generatingCutout}
+                    activeOpacity={0.8}
+                  >
+                    {generatingCutout ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <Text style={styles.canvasRemoveBgText}>Removing BG...</Text>
+                      </View>
+                    ) : (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                        <Ionicons name="cut" size={13} color="#FFFFFF" />
+                        <Text style={styles.canvasRemoveBgText}>No BG</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )
+              ) : (
+                <TouchableOpacity
+                  style={[styles.canvasRemoveBgBtn, { backgroundColor: colors.primary || "#4F46E5" }]}
+                  onPress={handleTopRightNoBgPress}
+                  disabled={generatingCutout}
+                  activeOpacity={0.8}
+                >
+                  {generatingCutout ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={styles.canvasRemoveBgText}>Removing BG...</Text>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                      <Ionicons name="cut" size={13} color="#FFFFFF" />
+                      <Text style={styles.canvasRemoveBgText}>No BG</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
 
           {/* ================= ACTIVE GARMENT ADJUSTMENT BAR ================= */}
           {activeGarment ? (
@@ -981,6 +1084,65 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 6,
     lineHeight: 18,
+  },
+
+  /* Top-Right Canvas Action Button */
+  canvasTopRightContainer: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 9999,
+    elevation: 8,
+  },
+  canvasRemoveBgBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  canvasRemoveBgText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  canvasRemoveBgBtnDisabled: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 4,
+    opacity: 0.8,
+  },
+  canvasRemoveBgTextDisabled: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  canvasCutoutActiveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(16, 185, 129, 0.95)",
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  canvasCutoutActiveText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
   },
 
   /* Draggable Garment */

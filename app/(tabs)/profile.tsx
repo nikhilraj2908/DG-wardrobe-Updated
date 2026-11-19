@@ -927,7 +927,7 @@ useEffect(() => {
                       <View style={styles.pairGarmentsRow}>
                         {pair.items?.map((itemSlot: any, idx: number) => {
                           const garment = itemSlot.item || {};
-                          const imgUri = garment.images?.[0] || garment.imageUrl || garment.image;
+                          const imgUri = garment.cutoutImage || garment.images?.[0] || garment.imageUrl || garment.image;
                           return (
                             <View key={idx} style={styles.pairGarmentThumbWrapper}>
                               {imgUri ? (
