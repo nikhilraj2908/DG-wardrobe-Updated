@@ -47,6 +47,22 @@ const DEFAULT_CATEGORIES = {
     ]
 };
 
+const PRESET_COLORS = [
+    { name: "Black", hex: "#111827" },
+    { name: "White", hex: "#FFFFFF", border: true },
+    { name: "Navy", hex: "#1E3A8A" },
+    { name: "Blue", hex: "#2563EB" },
+    { name: "Grey", hex: "#6B7280" },
+    { name: "Beige", hex: "#D4B996" },
+    { name: "Brown", hex: "#78350F" },
+    { name: "Red", hex: "#DC2626" },
+    { name: "Pink", hex: "#EC4899" },
+    { name: "Green", hex: "#059669" },
+    { name: "Yellow", hex: "#F59E0B" },
+    { name: "Purple", hex: "#7C3AED" },
+    { name: "Orange", hex: "#EA580C" },
+];
+
 const CATEGORY_ICONS = {
     mens: {
         accessories: require("../../assets/categories/mens/Accessories.png"),
@@ -159,6 +175,7 @@ export default function AddWardrobe() {
     const [customWardrobe, setCustomWardrobe] = useState("");
     const [price, setPrice] = useState("");
     const [brand, setBrand] = useState("");
+    const [color, setColor] = useState("");
     const [visibility, setVisibility] = useState<"public" | "private">("private");
     const [accessLevel, setAccessLevel] = useState<"normal" | "premium">("normal");
     const [useBgRemoval, setUseBgRemoval] = useState(false);
@@ -238,6 +255,7 @@ export default function AddWardrobe() {
                 );
                 setPrice(item.price ? String(item.price) : "");
                 setBrand(item.brand || "");
+                setColor(item.color || "");
                 setVisibility(item.visibility || "public");
                 setDescription(item.description || "");
                 setAccessLevel(item.accessLevel || "normal");
@@ -315,6 +333,34 @@ export default function AddWardrobe() {
     };
 
     const createNewCategory = async (categoryName: string, type: "mens" | "womens" | "unisex") => {
+        const cleanName = categoryName.trim();
+        if (!cleanName) {
+            Alert.alert("Error", "Please enter a category name");
+            return null;
+        }
+
+        // 1️⃣ Client-side precheck: check if category already exists in active list
+        const localExisting = filteredCategories.find(
+            c => c.name.trim().toLowerCase() === cleanName.toLowerCase()
+        ) || exploreCategories.find(
+            c => c.name.trim().toLowerCase() === cleanName.toLowerCase()
+        ) || userCategories.find(
+            c => c.name.trim().toLowerCase() === cleanName.toLowerCase()
+        );
+
+        if (localExisting) {
+            setSelectedCategory(localExisting);
+            setCategory(localExisting.name);
+            setCategoryType(localExisting.type);
+            setShowOtherCategoryInput(false);
+            setCustomCategory("");
+            Alert.alert(
+                "Category Found",
+                `"${localExisting.name}" is already available and has been selected for your item.`
+            );
+            return localExisting;
+        }
+
         try {
             const token = await storage.getItem("token");
             if (!token) {
@@ -323,22 +369,73 @@ export default function AddWardrobe() {
             }
             const response = await api.post(
                 "/api/categories",
-                { name: categoryName, type },
+                { name: cleanName, type },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             if (response.data) {
+                const cat = response.data.category || response.data;
+                setSelectedCategory(cat);
+                setCategory(cat.name);
+                setCategoryType(cat.type);
+                setShowOtherCategoryInput(false);
+                setCustomCategory("");
+
+                if (response.data.alreadyExists) {
+                    Alert.alert(
+                        "Category Found",
+                        `"${cat.name}" is already available and has been selected for your item.`
+                    );
+                } else {
+                    Alert.alert("Success", `Category "${cat.name}" created and selected!`);
+                }
+
                 await fetchCategories();
-                return response.data.category || response.data;
+                return cat;
             }
         } catch (error: any) {
             console.error("Error creating category:", error);
+            // 2️⃣ Handle 409 or duplicate response smoothly without halting user flow
+            const backendExisting = error.response?.data?.category || filteredCategories.find(
+                c => c.name.trim().toLowerCase() === cleanName.toLowerCase()
+            );
+
+            if (backendExisting) {
+                setSelectedCategory(backendExisting);
+                setCategory(backendExisting.name);
+                setCategoryType(backendExisting.type);
+                setShowOtherCategoryInput(false);
+                setCustomCategory("");
+                Alert.alert(
+                    "Category Found",
+                    `"${backendExisting.name}" is already available and has been selected for your item.`
+                );
+                return backendExisting;
+            }
+
             if (error.response?.status === 409) {
-                Alert.alert("Category exists", "This category already exists.");
+                await fetchCategories();
+                const refetched = filteredCategories.find(
+                    c => c.name.trim().toLowerCase() === cleanName.toLowerCase()
+                );
+                if (refetched) {
+                    setSelectedCategory(refetched);
+                    setCategory(refetched.name);
+                    setCategoryType(refetched.type);
+                    setShowOtherCategoryInput(false);
+                    setCustomCategory("");
+                    Alert.alert(
+                        "Category Found",
+                        `"${refetched.name}" is already available and has been selected for your item.`
+                    );
+                    return refetched;
+                }
+                Alert.alert("Category Exists", `"${cleanName}" already exists. Please select it from the categories list.`);
             } else {
                 Alert.alert("Error", error.response?.data?.message || "Failed to create category");
             }
             return null;
         }
+        return null;
     };
 
     const handleDeleteCategory = async (categoryId: string) => {
@@ -494,6 +591,7 @@ export default function AddWardrobe() {
         setCustomWardrobe("");
         setPrice("");
         setBrand("");
+        setColor("");
         setDescription("");
         setVisibility("private");
         setShowOtherCategoryInput(false);
@@ -529,15 +627,14 @@ export default function AddWardrobe() {
     };
 
     const handleSubmit = async () => {
-        let finalCategory = category;
+        let activeCategory = selectedCategory;
         if (showOtherCategoryInput && customCategory) {
-            const newCategory = await createNewCategory(customCategory, categoryType);
-            if (!newCategory) return;
-            setSelectedCategory(newCategory);
-            finalCategory = newCategory._id;
+            const resolvedCategory = await createNewCategory(customCategory, categoryType);
+            if (!resolvedCategory) return;
+            activeCategory = resolvedCategory;
         }
         const finalWardrobe = showOtherWardrobeInput && customWardrobe ? customWardrobe : wardrobe;
-        if (images.length === 0 || !finalCategory || !finalWardrobe) {
+        if (images.length === 0 || !activeCategory || !finalWardrobe) {
             Alert.alert("Error", "At least one image, category & wardrobe are required");
             return;
         }
@@ -590,19 +687,22 @@ export default function AddWardrobe() {
                 });
             }
 
-            if (!selectedCategory) {
+            if (!activeCategory) {
                 Alert.alert("Error", "Please select a valid category");
                 return;
             }
 
-            formData.append("category", selectedCategory._id);
-            formData.append("categoryType", selectedCategory.type);
+            formData.append("category", activeCategory._id);
+            formData.append("categoryType", activeCategory.type);
             formData.append("wardrobe", finalWardrobe);
             formData.append("price", price || "0");
             formData.append("brand", brand);
+            if (color.trim()) {
+                formData.append("color", color.trim());
+            }
             formData.append("visibility", visibility);
             formData.append("accessLevel", accessLevel);
-            formData.append("gender", selectedCategory.type);
+            formData.append("gender", activeCategory.type);
             if (description.trim()) formData.append("description", description.trim());
 
             let urlPath = isEdit && itemId
@@ -724,8 +824,8 @@ export default function AddWardrobe() {
             setSelectedCategory(newCategory);
             setCategory(newCategory.name);
             setCategoryType(newCategory.type);
-            Alert.alert("Success", "Category created successfully!");
             setShowOtherCategoryInput(false);
+            setCustomCategory("");
         }
     };
 
@@ -888,6 +988,66 @@ export default function AddWardrobe() {
                         value={brand}
                         onChangeText={setBrand}
                     />
+                </View>
+
+                <View style={styles.inputContainer}>
+                    <View style={styles.inputLabelRow}>
+                        <Text style={styles.inputLabel}>Color (Optional)</Text>
+                        {color.trim().length > 0 && (
+                            <TouchableOpacity onPress={() => setColor("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <Text style={styles.clearColorText}>Clear</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    {/* Quick color chips */}
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.colorChipsScroll}
+                    >
+                        {PRESET_COLORS.map((c) => {
+                            const isSelected = color.trim().toLowerCase() === c.name.toLowerCase();
+                            return (
+                                <TouchableOpacity
+                                    key={c.name}
+                                    style={[
+                                        styles.colorChip,
+                                        isSelected && styles.colorChipSelected,
+                                    ]}
+                                    onPress={() => setColor(isSelected ? "" : c.name)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View
+                                        style={[
+                                            styles.colorDot,
+                                            { backgroundColor: c.hex },
+                                            c.border && styles.colorDotBorder,
+                                        ]}
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.colorChipText,
+                                            isSelected && styles.colorChipTextSelected,
+                                        ]}
+                                    >
+                                        {c.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+
+                    {/* Custom Color Input */}
+                    <View style={styles.colorInputWrapper}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g. Navy Blue, Olive, Maroon, Pastel..."
+                            placeholderTextColor={colors.textMuted}
+                            value={color}
+                            onChangeText={setColor}
+                        />
+                    </View>
                 </View>
 
                 <View style={styles.inputContainer}>
@@ -1231,6 +1391,59 @@ const createStyles = (colors: any) =>
       fontWeight: "600",
       marginBottom: 6,
       color: colors.textSecondary,
+    },
+    inputLabelRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 6,
+    },
+    clearColorText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.primaryDark,
+    },
+    colorChipsScroll: {
+      paddingVertical: 4,
+      marginBottom: 10,
+    },
+    colorChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginRight: 8,
+    },
+    colorChipSelected: {
+      borderColor: colors.primaryDark,
+      backgroundColor: colors.cardHover || colors.surface,
+      borderWidth: 1.5,
+    },
+    colorDot: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      marginRight: 6,
+    },
+    colorDotBorder: {
+      borderWidth: 1,
+      borderColor: colors.lightborder || "#D1D5DB",
+    },
+    colorChipText: {
+      fontSize: 13,
+      color: colors.textPrimary,
+      fontWeight: "500",
+    },
+    colorChipTextSelected: {
+      color: colors.primaryDark,
+      fontWeight: "700",
+    },
+    colorInputWrapper: {
+      marginTop: 2,
     },
     input: {
       borderWidth: 1,

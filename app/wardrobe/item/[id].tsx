@@ -446,6 +446,15 @@ export default function ItemDetails() {
                             <Text style={styles.title}>{item.title || item.wardrobe?.name}</Text>
                             <Text style={styles.price}>₹{item.price}</Text>
 
+                            {item.color ? (
+                                <View style={styles.colorRow}>
+                                    <Text style={styles.colorLabel}>Color: </Text>
+                                    <View style={styles.colorBadge}>
+                                        <Text style={styles.colorBadgeText}>{item.color}</Text>
+                                    </View>
+                                </View>
+                            ) : null}
+
                             <Text style={styles.descTitle}>Description</Text>
                             <Text style={styles.desc}>{item.description}</Text>
 
@@ -669,6 +678,30 @@ const createStyles = (colors: any) =>
             fontWeight: "700",
             color: colors.primary,
             marginBottom: 16,
+        },
+        colorRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 14,
+            gap: 6,
+        },
+        colorLabel: {
+            fontSize: 14,
+            fontWeight: "600",
+            color: colors.textPrimary,
+        },
+        colorBadge: {
+            backgroundColor: colors.surface,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        colorBadgeText: {
+            fontSize: 13,
+            fontWeight: "600",
+            color: colors.primaryDark,
         },
         descTitle: {
             fontSize: 16,

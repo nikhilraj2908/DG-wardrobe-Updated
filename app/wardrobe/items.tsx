@@ -34,6 +34,7 @@ interface WardrobeItem {
   };
   price: number;
   brand?: string;
+  color?: string;
   imageUrl?: string;
   images?: string[];
   createdAt: string;
