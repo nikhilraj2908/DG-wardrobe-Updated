@@ -75,9 +75,22 @@ export default function HomeScreen() {
 
   const API_URL = "https://api.digiwardrobe.com";
 
+  /* ================= REFRESH ================= */
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setHasMore(true);
+    await Promise.allSettled([
+      loadFeed(true),
+      loadStories(),
+      loadNotificationsCount(),
+    ]);
+    setRefreshing(false);
+  };
+
   useEffect(() => {
     const unsubscribe = onHomeTabPress(() => {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      handleRefresh();
     });
 
     return unsubscribe;
@@ -143,7 +156,7 @@ export default function HomeScreen() {
 
   /* ================= LOAD FEED ================= */
   const loadFeed = async (reset = false) => {
-    if (loading || (!hasMore && !reset)) return;
+    if ((loading && !reset) || (!hasMore && !reset)) return;
 
     try {
       setLoading(true);
@@ -186,13 +199,6 @@ export default function HomeScreen() {
     }
   };
 
-  /* ================= REFRESH ================= */
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    setHasMore(true);
-    await loadFeed(true);
-    setRefreshing(false);
-  };
 
   /* ================= RENDER POST ================= */
   const renderPost = ({ item }: { item: FeedItem }) => {
