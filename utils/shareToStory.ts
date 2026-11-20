@@ -44,7 +44,10 @@ export const shareToStory = async (options: ShareToStoryOptions): Promise<boolea
     return true;
   } catch (error: any) {
     console.error("Error sharing to story:", error);
-    const msg = error.response?.data?.message || "Failed to share to story. Please try again.";
+    let msg = error.response?.data?.message || "Failed to share to story. Please try again.";
+    if (error.response?.status === 400 && msg === "Media file required") {
+      msg = "Backend update required: Please run 'git pull' and 'pm2 restart all' in PuTTY on your EC2 server to enable direct post and combo story sharing.";
+    }
     Alert.alert("Share Failed", msg);
     return false;
   }

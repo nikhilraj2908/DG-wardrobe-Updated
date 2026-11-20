@@ -523,7 +523,7 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleSharePostToStory} style={styles.actionIcon}>
-              <Ionicons name="paper-plane-outline" size={24} color={colors.textPrimary} />
+              <Ionicons name="paper-plane-outline" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -860,9 +860,12 @@ const createStyles = (colors: any) =>
     leftActions: {
       flexDirection: "row",
       gap: 14,
+      alignItems: "center",
     },
     actionIcon: {
       padding: 0,
+      justifyContent: "center",
+      alignItems: "center",
     },
     likes: {
       paddingHorizontal: 14,
