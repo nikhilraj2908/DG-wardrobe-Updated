@@ -368,6 +368,15 @@ export default function AllWardrobeItemsScreen() {
     return map[name.trim().toLowerCase()] || "#A855F7";
   };
 
+  const isColorMatch = (itemColor?: string, targetColor?: string): boolean => {
+    const cleanItem = (itemColor || "").trim().toLowerCase();
+    const cleanTarget = (targetColor || "").trim().toLowerCase();
+    if (!cleanItem || !cleanTarget) return false;
+    return cleanItem === cleanTarget || cleanItem.includes(cleanTarget) || cleanTarget.includes(cleanItem);
+  };
+
+  const [filterOnlyColor, setFilterOnlyColor] = useState(false);
+
   const PRESET_POPULAR_COLORS = useMemo(
     () => [
       "Black",
@@ -402,34 +411,39 @@ export default function AllWardrobeItemsScreen() {
   }, [items]);
 
   const colorListToRender = useMemo(() => {
-    const list: { name: string; count: number }[] = [...colorsWithCounts];
-    const seen = new Set(list.map((c) => c.name.toLowerCase()));
+    const list: { name: string; count: number }[] = [];
+    const seen = new Set<string>();
 
-    // Check matching items for any preset popular colors
-    PRESET_POPULAR_COLORS.forEach((preset) => {
-      const pLower = preset.toLowerCase();
-      if (!seen.has(pLower)) {
-        const matchCount = items.filter((item) =>
-          (item.color || "").trim().toLowerCase().includes(pLower)
-        ).length;
-        if (matchCount > 0) {
-          list.push({ name: preset, count: matchCount });
-          seen.add(pLower);
+    // 1. Explicit colors in user's items
+    items.forEach((item) => {
+      if (item.color && item.color.trim()) {
+        const clean = item.color.trim();
+        const formatted = clean.charAt(0).toUpperCase() + clean.slice(1);
+        if (!seen.has(formatted.toLowerCase())) {
+          seen.add(formatted.toLowerCase());
+          const count = items.filter((i) => isColorMatch(i.color, formatted)).length;
+          list.push({ name: formatted, count });
         }
       }
     });
 
-    // Add remaining popular presets so user can filter by any standard color
+    // 2. Preset popular colors
     PRESET_POPULAR_COLORS.forEach((preset) => {
       const pLower = preset.toLowerCase();
       if (!seen.has(pLower)) {
-        list.push({ name: preset, count: 0 });
+        const count = items.filter((i) => isColorMatch(i.color, preset)).length;
+        list.push({ name: preset, count });
         seen.add(pLower);
       }
     });
 
-    return list;
-  }, [colorsWithCounts, items, PRESET_POPULAR_COLORS]);
+    // Sort: colors with count > 0 first, then remaining
+    return list.sort((a, b) => {
+      if (a.count > 0 && b.count === 0) return -1;
+      if (b.count > 0 && a.count === 0) return 1;
+      return b.count - a.count;
+    });
+  }, [items, PRESET_POPULAR_COLORS]);
 
   const availableColors = useMemo(() => {
     return colorListToRender.filter((c) => c.count > 0).map((c) => c.name);
@@ -438,22 +452,21 @@ export default function AllWardrobeItemsScreen() {
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       const matchCat = selectedCategory ? item.category?.name === selectedCategory : true;
-      const itemColor = (item.color || "").trim().toLowerCase();
-      const targetColor = (selectedColor || "").trim().toLowerCase();
-      const matchColor = selectedColor
-        ? itemColor === targetColor ||
-          itemColor.includes(targetColor) ||
-          targetColor.includes(itemColor)
-        : true;
-      return matchCat && matchColor;
+      if (!matchCat) return false;
+      if (selectedColor && filterOnlyColor) {
+        return isColorMatch(item.color, selectedColor);
+      }
+      return true;
     });
-  }, [items, selectedCategory, selectedColor]);
+  }, [items, selectedCategory, selectedColor, filterOnlyColor]);
 
   const sortedItems = useMemo(() => {
     const list = [...filteredItems];
+
+    // Primary sort
     switch (sortBy) {
       case "colorAZ":
-        return list.sort((a, b) => {
+        list.sort((a, b) => {
           const cA = (a.color || "").trim().toLowerCase();
           const cB = (b.color || "").trim().toLowerCase();
           if (!cA && !cB) return 0;
@@ -461,53 +474,66 @@ export default function AllWardrobeItemsScreen() {
           if (!cB) return -1;
           return cA.localeCompare(cB);
         });
+        break;
       case "dateNewest":
-        return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
       case "dateOldest":
-        return list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        break;
       case "priceHigh":
-        return list.sort((a, b) => b.price - a.price);
+        list.sort((a, b) => b.price - a.price);
+        break;
       case "priceLow":
-        return list.sort((a, b) => a.price - b.price);
+        list.sort((a, b) => a.price - b.price);
+        break;
       case "nameAZ":
-        return list.sort((a, b) => (a.category?.name || "").localeCompare(b.category?.name || ""));
-
-      // ✅ Updated Public First: normal public (2) → premium (1) → private (0)
+        list.sort((a, b) => (a.category?.name || "").localeCompare(b.category?.name || ""));
+        break;
       case "publicFirst":
-        return list.sort((a, b) => {
+        list.sort((a, b) => {
           const getRank = (item: WardrobeItem) => {
-            if (item.visibility === "public") {
-              // Premium items have lower rank than normal public
-              return item.accessLevel === "premium" ? 1 : 2;
-            }
-            return 0; // private
+            if (item.visibility === "public") return item.accessLevel === "premium" ? 1 : 2;
+            return 0;
           };
           return getRank(b) - getRank(a);
         });
-
-      // ✅ Updated Premium First: premium (2) → normal public (1) → private (0)
+        break;
       case "premiumFirst":
-        return list.sort((a, b) => {
+        list.sort((a, b) => {
           const getRank = (item: WardrobeItem) => {
             if (item.accessLevel === "premium") return 2;
-            if (item.visibility === "public") return 1; // normal public
-            return 0; // private
+            if (item.visibility === "public") return 1;
+            return 0;
           };
           return getRank(b) - getRank(a);
         });
-
-      // Private First stays as is (private first, others in original order)
+        break;
       case "privateFirst":
-        return list.sort((a, b) => {
+        list.sort((a, b) => {
           const aPrivate = a.visibility === "private" ? 1 : 0;
           const bPrivate = b.visibility === "private" ? 1 : 0;
           return bPrivate - aPrivate;
         });
-
+        break;
       default:
-        return list;
+        break;
     }
-  }, [filteredItems, sortBy]);
+
+    // When a color is clicked, SORT items matching that color to the VERY TOP!
+    if (selectedColor && !filterOnlyColor) {
+      list.sort((a, b) => {
+        const aMatch = isColorMatch(a.color, selectedColor) ? 1 : 0;
+        const bMatch = isColorMatch(b.color, selectedColor) ? 1 : 0;
+        if (aMatch !== bMatch) {
+          return bMatch - aMatch;
+        }
+        return 0;
+      });
+    }
+
+    return list;
+  }, [filteredItems, sortBy, selectedColor, filterOnlyColor]);
   const DEFAULT_IMAGE = "https://ui-avatars.com/api/?name=Item&background=random";
 
   const getBrandLabel = (item: WardrobeItem) => {
@@ -609,6 +635,7 @@ export default function AllWardrobeItemsScreen() {
     const imageUri = getItemImageUrl(item);
     const isSelected = selectedItemIds.includes(item._id);
     const itemKey = `${item._id}-${itemSelectionMode ? 'select' : 'normal'}-${isSelected ? 'selected' : 'unselected'}`;
+    const isColorMatchActive = selectedColor ? isColorMatch(item.color, selectedColor) : false;
 
     return (
       <TouchableOpacity
@@ -617,7 +644,11 @@ export default function AllWardrobeItemsScreen() {
         delayLongPress={300}
         onPress={() => handleItemPress(item._id)}
         onLongPress={() => handleItemLongPress(item._id)}
-        style={[styles.gridItem, isSelected && styles.selectedItem]}
+        style={[
+          styles.gridItem,
+          isSelected && styles.selectedItem,
+          isColorMatchActive && styles.colorMatchedItem,
+        ]}
       >
         <View style={styles.gridImageContainer}>
           <Image
@@ -696,6 +727,7 @@ export default function AllWardrobeItemsScreen() {
   const renderListViewItem = (item: WardrobeItem) => {
     const imageUri = getItemImageUrl(item);
     const isSelected = selectedItemIds.includes(item._id);
+    const isColorMatchActive = selectedColor ? isColorMatch(item.color, selectedColor) : false;
 
     return (
       <TouchableOpacity
@@ -707,6 +739,7 @@ export default function AllWardrobeItemsScreen() {
         style={[
           styles.listItem,
           isSelected && styles.selectedItem,
+          isColorMatchActive && styles.colorMatchedItem,
           itemSelectionMode && !isSelected && styles.dimmedListItem
         ]}
       >
@@ -939,7 +972,7 @@ export default function AllWardrobeItemsScreen() {
                 >
                   <Ionicons
                     name="color-palette"
-                    size={20}
+                    size={15}
                     color={!selectedColor ? colors.primaryDark : colors.textMuted}
                   />
                 </View>
@@ -978,7 +1011,7 @@ export default function AllWardrobeItemsScreen() {
                       {isSelected ? (
                         <Ionicons
                           name="checkmark"
-                          size={18}
+                          size={13}
                           color={isWhite ? "#111827" : "#FFFFFF"}
                         />
                       ) : null}
@@ -1007,31 +1040,52 @@ export default function AllWardrobeItemsScreen() {
           {/* ========== RESULTS INFO ========== */}
           <View style={styles.resultsInfo}>
             <Text style={styles.resultsText}>
-              {selectedCategory && selectedColor
-                ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}" • Color: ${selectedColor}`
-                : selectedCategory
+              {selectedCategory
                 ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}"`
-                : selectedColor
-                ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedColor}"`
                 : `${filteredItems.length} items in collection`}
-              {sortBy === "colorAZ" ? " • Sorted by Color" : ""}
+              {selectedColor
+                ? ` • ${filterOnlyColor ? `Only ${selectedColor}` : `Sorted: ${selectedColor} first`}`
+                : sortBy === "colorAZ"
+                ? " • Sorted by Color"
+                : ""}
             </Text>
             {selectedColor && (
-              <TouchableOpacity
-                style={styles.activeColorPill}
-                onPress={() => setSelectedColor(null)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <View
-                  style={[
-                    styles.colorFilterDot,
-                    { backgroundColor: getColorHex(selectedColor) },
-                    selectedColor.toLowerCase() === "white" && styles.colorDotBorder,
-                  ]}
-                />
-                <Text style={styles.activeColorBannerText}>Color: {selectedColor}</Text>
-                <Ionicons name="close-circle" size={14} color={colors.primaryDark} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                <View style={styles.activeColorPill}>
+                  <View
+                    style={[
+                      styles.colorFilterDot,
+                      { backgroundColor: getColorHex(selectedColor) },
+                      selectedColor.toLowerCase() === "white" && styles.colorDotBorder,
+                    ]}
+                  />
+                  <Text style={styles.activeColorBannerText}>
+                    {filterOnlyColor ? `Only ${selectedColor}` : `${selectedColor} first`}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setSelectedColor(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close-circle" size={14} color={colors.primaryDark} />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.filterModeToggle, filterOnlyColor && styles.filterModeToggleActive]}
+                  onPress={() => setFilterOnlyColor(!filterOnlyColor)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={filterOnlyColor ? "funnel" : "funnel-outline"}
+                    size={11}
+                    color={filterOnlyColor ? "#FFFFFF" : colors.primaryDark}
+                    style={{ marginRight: 3 }}
+                  />
+                  <Text style={[styles.filterModeToggleText, filterOnlyColor && styles.filterModeToggleTextActive]}>
+                    {filterOnlyColor ? "Show all" : "Only this color"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 
@@ -1674,8 +1728,8 @@ const createStyles = (colors: any) =>
       borderColor: colors.primary,
     },
     colorsSection: {
-      paddingTop: 10,
-      paddingBottom: 10,
+      paddingTop: 8,
+      paddingBottom: 8,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -1684,10 +1738,10 @@ const createStyles = (colors: any) =>
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 16,
-      marginBottom: 8,
+      marginBottom: 6,
     },
     colorsTitle: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: "700",
       color: colors.textPrimary,
     },
@@ -1697,35 +1751,35 @@ const createStyles = (colors: any) =>
     },
     colorsContent: {
       paddingRight: 16,
-      gap: 12,
+      gap: 10,
     },
     colorSwatchChip: {
       alignItems: "center",
-      width: 52,
+      width: 44,
       overflow: "visible",
     },
     colorSwatchChipSelected: {
       transform: [{ scale: 1.05 }],
     },
     colorSwatchCircle: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       justifyContent: "center",
       alignItems: "center",
-      marginBottom: 4,
+      marginBottom: 3,
       position: "relative",
       borderWidth: 1.5,
       borderColor: colors.border,
     },
     colorSwatchCircleSelected: {
       borderColor: colors.primaryDark,
-      borderWidth: 2.5,
+      borderWidth: 2,
       shadowColor: colors.primaryDark,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.35,
-      shadowRadius: 5,
-      elevation: 5,
+      shadowRadius: 4,
+      elevation: 4,
     },
     whiteColorBorder: {
       borderColor: "#D1D5DB",
@@ -1735,13 +1789,13 @@ const createStyles = (colors: any) =>
       top: -3,
       right: -3,
       backgroundColor: colors.primary,
-      borderRadius: 9,
-      minWidth: 18,
-      height: 18,
-      paddingHorizontal: 4,
+      borderRadius: 8,
+      minWidth: 15,
+      height: 15,
+      paddingHorizontal: 3,
       justifyContent: "center",
       alignItems: "center",
-      borderWidth: 1.5,
+      borderWidth: 1,
       borderColor: colors.surface,
     },
     colorSwatchBadgeSelected: {
@@ -1749,11 +1803,11 @@ const createStyles = (colors: any) =>
     },
     colorSwatchBadgeText: {
       color: "#FFFFFF",
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: "700",
     },
     colorSwatchLabel: {
-      fontSize: 11,
+      fontSize: 10,
       color: colors.textSecondary,
       fontWeight: "600",
       textAlign: "center",
@@ -1761,6 +1815,32 @@ const createStyles = (colors: any) =>
     colorSwatchLabelSelected: {
       color: colors.primaryDark,
       fontWeight: "700",
+    },
+    colorMatchedItem: {
+      borderWidth: 2,
+      borderColor: colors.primary,
+    },
+    filterModeToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 14,
+    },
+    filterModeToggleActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterModeToggleText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.primaryDark,
+    },
+    filterModeToggleTextActive: {
+      color: "#FFFFFF",
     },
     categoryCountText: {
       color: "#FFFFFF",
