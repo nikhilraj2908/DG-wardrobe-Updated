@@ -6,7 +6,8 @@ import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { storage } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useScrollToTop, useNavigation } from "@react-navigation/native";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -56,6 +57,10 @@ export default function HomeScreen() {
   const { theme } = useTheme();                         // <-- get current theme
   const colors = theme.colors;
   const router = useRouter();
+  const navigation = useNavigation();
+  const flatListRef = useRef<FlatList>(null);
+  useScrollToTop(flatListRef);
+
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -71,6 +76,14 @@ export default function HomeScreen() {
   const LIMIT = 6;
 
   const API_URL = "https://api.digiwardrobe.com";
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("tabPress" as any, () => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     loadFeed(true);
@@ -316,6 +329,7 @@ export default function HomeScreen() {
   return (
     <AppBackground>
       <FlatList
+        ref={flatListRef}
         data={feed}
       keyExtractor={(item) => item._id} 
         renderItem={renderPost}
@@ -485,7 +499,7 @@ const createStyles = (colors: any) =>
       borderColor: colors.surface,
     },
     badgeText: {
-      color: colors.textPrimary,
+      color: "#FFFFFF",
       fontSize: 9,
       fontWeight: "700",
     },
