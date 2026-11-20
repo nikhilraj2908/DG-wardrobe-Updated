@@ -14,6 +14,7 @@ import {
 } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useTheme } from "@/app/theme/ThemeContext";
+import { triggerHomeScrollToTop } from "@/utils/homeScroll";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -56,6 +57,11 @@ export default function TabsLayout() {
       >
         <Tabs.Screen
           name="home"
+          listeners={{
+            tabPress: () => {
+              triggerHomeScrollToTop();
+            },
+          }}
           options={{
             title: "Home",
             tabBarIcon: ({ focused }) => (

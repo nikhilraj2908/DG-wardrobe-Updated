@@ -2,11 +2,11 @@ import { useTheme } from "@/app/theme/ThemeContext";
 import AppBackground from "@/components/AppBackground";
 import ItemPostCard from "@/components/ItemPostCard";
 import SearchModal from "@/components/SearchModal";
+import { onHomeTabPress } from "@/utils/homeScroll";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { storage } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useScrollToTop, useNavigation } from "@react-navigation/native";
 import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
@@ -57,9 +57,7 @@ export default function HomeScreen() {
   const { theme } = useTheme();                         // <-- get current theme
   const colors = theme.colors;
   const router = useRouter();
-  const navigation = useNavigation();
   const flatListRef = useRef<FlatList>(null);
-  useScrollToTop(flatListRef);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -78,12 +76,12 @@ export default function HomeScreen() {
   const API_URL = "https://api.digiwardrobe.com";
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener("tabPress" as any, () => {
+    const unsubscribe = onHomeTabPress(() => {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     });
 
     return unsubscribe;
-  }, [navigation]);
+  }, []);
 
   useEffect(() => {
     loadFeed(true);
