@@ -138,8 +138,10 @@ const normalizeCategoryKey = (name: string) =>
 
 const getCategoryIcon = (categoryName: string) => {
   const key = normalizeCategoryKey(categoryName);
-  if (CATEGORY_ICONS.mens[key]) return CATEGORY_ICONS.mens[key];
-  if (CATEGORY_ICONS.womens[key]) return CATEGORY_ICONS.womens[key];
+  const mensIcons = CATEGORY_ICONS.mens as any;
+  if (mensIcons[key]) return mensIcons[key];
+  const womensIcons = CATEGORY_ICONS.womens as any;
+  if (womensIcons[key]) return womensIcons[key];
   return null;
 };
 
@@ -1370,6 +1372,10 @@ const createStyles = (colors: any) =>
       height: 24,
       justifyContent: "center",
       alignItems: "center",
+    },
+    selectedIndicator: {
+      borderRadius: 12,
+      backgroundColor: "transparent",
     },
     unselectedIndicator: {
       borderWidth: 2,

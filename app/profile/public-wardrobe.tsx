@@ -145,12 +145,14 @@ const getCategoryIcon = (categoryName: string) => {
   const key = normalizeCategoryKey(categoryName);
 
   // Try mens first, then womens
-  if (CATEGORY_ICONS.mens[key]) {
-    return CATEGORY_ICONS.mens[key];
+  const mensIcons = CATEGORY_ICONS.mens as any;
+  if (mensIcons[key]) {
+    return mensIcons[key];
   }
 
-  if (CATEGORY_ICONS.womens[key]) {
-    return CATEGORY_ICONS.womens[key];
+  const womensIcons = CATEGORY_ICONS.womens as any;
+  if (womensIcons[key]) {
+    return womensIcons[key];
   }
 
   return null;
@@ -273,7 +275,7 @@ export default function PublicWardrobeScreen() {
 
   const getItemImageUrl = (item: WardrobeItem): string => {
     const imagePath = item.images?.[0] || item.imageUrl || null;
-    return imagePath ? resolveImageUrl(imagePath) : DEFAULT_IMAGE;
+    return (imagePath ? resolveImageUrl(imagePath) : null) || DEFAULT_IMAGE;
   };
 
   const renderCategoryChip = ({ name, count }: { name: string; count: number }) => {

@@ -187,7 +187,7 @@ export default function HomeScreen() {
       return (
         <ItemPostCard
           item={item}
-          currentUserId={currentUserId}
+          currentUserId={currentUserId || undefined}
           key={`item-${item._id}`}
           onDelete={(deletedId: string) => {
             setFeed(prev => prev.filter(i => i._id !== deletedId));

@@ -153,11 +153,11 @@ export default function NotificationsScreen() {
                                     if (item.item) {
                                         if (item.type === "comment") {
                                             router.push({
-                                                pathname: `/wardrobe/item/${item.item}`,
+                                                pathname: `/wardrobe/item/${item.item}` as any,
                                                 params: { openComments: "true" },
                                             });
                                         } else {
-                                            router.push(`/wardrobe/item/${item.item}`);
+                                            router.push(`/wardrobe/item/${item.item}` as any);
                                         }
                                     }
                                 }}

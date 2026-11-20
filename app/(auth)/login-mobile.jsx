@@ -226,7 +226,7 @@ export default function LoginMobileScreen() {
       </TouchableOpacity>
 
       <Text style={styles.footer}>
-        Don't have an account?{" "}
+        {"Don't have an account? "}
         <Text 
           style={styles.signup}
           onPress={() => router.push("/(auth)/signup")}

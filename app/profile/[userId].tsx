@@ -229,7 +229,7 @@ export default function OtherUserProfile() {
     setPremiumItemCount(res.data.count);
     setPremiumWorth(res.data.totalWorth);
     setPremiumCover(
-      res.data.coverImage ? resolveImageUrl(res.data.coverImage) : null
+      res.data.coverImage ? (resolveImageUrl(res.data.coverImage) || null) : null
     );
   };
 

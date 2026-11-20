@@ -137,10 +137,10 @@ export default function WardrobeDetailsScreen() {
 
   const getFirstItemImage = (item: WardrobeItem): string | null => {
     if (Array.isArray(item.images) && item.images.length > 0) {
-      return resolveImageUrl(item.images[0]);
+      return resolveImageUrl(item.images[0]) || null;
     }
     if (item.imageUrl) {
-      return resolveImageUrl(item.imageUrl);
+      return resolveImageUrl(item.imageUrl) || null;
     }
     return null;
   };

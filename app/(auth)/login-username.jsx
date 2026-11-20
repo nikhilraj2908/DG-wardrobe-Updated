@@ -124,7 +124,7 @@ export default function LoginWithUsername() {
         </TouchableOpacity>
 
         <Text style={styles.footer}>
-          Don't have an account?{" "}
+          {"Don't have an account? "}
           <Link href="/(auth)/signup" style={styles.signupText}>
             Sign up
           </Link>

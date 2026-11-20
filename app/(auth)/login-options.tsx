@@ -19,7 +19,9 @@ const redirectUri = AuthSession.makeRedirectUri({
 
 
 export default function LoginOptionsScreen() {
-const { AUTH0_DOMAIN, AUTH0_CLIENT_ID } = Constants.expoConfig.extra;
+const extra = Constants.expoConfig?.extra || (Constants.manifest as any)?.extra || {};
+const AUTH0_DOMAIN = extra.AUTH0_DOMAIN || "";
+const AUTH0_CLIENT_ID = extra.AUTH0_CLIENT_ID || "";
 
 
 
@@ -49,7 +51,7 @@ useEffect(() => {
   const savePKCE = async () => {
     await AsyncStorage.setItem(
       "auth0_code_verifier",
-      request.codeVerifier
+      request.codeVerifier!
     );
 
     await AsyncStorage.setItem(
@@ -136,7 +138,7 @@ useEffect(() => {
 
         {/* Footer */}
         <Text style={styles.footer}>
-          Don't have an account?{" "}
+          {"Don't have an account? "}
           <Link href="/(auth)/signup" style={styles.signupText}>
             Sign up
           </Link>

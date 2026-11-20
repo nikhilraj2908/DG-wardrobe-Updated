@@ -43,8 +43,6 @@ function StoryVideo({ uri, paused, style }: { uri: string; paused: boolean; styl
     <VideoView
       style={style}
       player={player}
-      allowsFullscreen={false}
-      allowsPictureInPicture={false}
       nativeControls={false}
       contentFit="contain"
     />
@@ -375,7 +373,7 @@ useEffect(() => {
               resizeMode="contain"
             />
           ) : (
-            <StoryVideo uri={mediaUrl} paused={paused} style={styles.media} />
+            <StoryVideo uri={mediaUrl || ""} paused={paused} style={styles.media} />
           )}
         </Pressable>
 
@@ -532,7 +530,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   comboSilhouetteWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: "center",
     alignItems: "center",
   },

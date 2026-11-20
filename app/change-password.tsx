@@ -4,8 +4,9 @@ import WardrobeHeader from "@/components/WardrobeHeader";
 import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   StyleSheet,
   Text,
@@ -16,13 +17,33 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ChangePassword() {
-  const { token ,user} = useAuth();
-const isGoogleUser = user?.authProvider === "google";
+  const { token } = useAuth();
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [fetchingUser, setFetchingUser] = useState(true);
 
   const [current, setCurrent] = useState("");
   const [newPass, setNewPass] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        if (!token) return;
+        const res = await api.get("/api/user/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data?.authProvider === "google") {
+          setIsGoogleUser(true);
+        }
+      } catch (e) {
+        console.error("Error fetching user in change-password:", e);
+      } finally {
+        setFetchingUser(false);
+      }
+    };
+    fetchUser();
+  }, [token]);
 
   // 👁️ visibility toggles
   const [showCurrent, setShowCurrent] = useState(false);
@@ -63,7 +84,20 @@ const isGoogleUser = user?.authProvider === "google";
       setLoading(false);
     }
   };
-if (isGoogleUser) {
+  if (fetchingUser) {
+    return (
+      <SafeAreaView style={{ flex: 1 }}>
+        <AppBackground>
+          <WardrobeHeader title="Change Password" onBack={() => router.back()} />
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" color="#A855F7" />
+          </View>
+        </AppBackground>
+      </SafeAreaView>
+    );
+  }
+
+  if (isGoogleUser) {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <AppBackground>

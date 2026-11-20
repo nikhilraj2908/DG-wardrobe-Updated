@@ -280,7 +280,7 @@ export default function ProfileScreen() {
       };
     });
 
-    const primaryMedia = comboItems.find((c) => c.image)?.image || "";
+    const primaryMedia = comboItems.find((c: any) => c.image)?.image || "";
 
     if (!primaryMedia) {
       Alert.alert("Unable to Share", "No garment image found in this combo.");

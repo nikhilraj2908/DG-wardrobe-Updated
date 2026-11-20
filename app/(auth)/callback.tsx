@@ -7,8 +7,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
 
-const { AUTH0_DOMAIN, AUTH0_CLIENT_ID } = Constants.expoConfig.extra;
-const API_URL = Constants.expoConfig.extra.apiBaseUrl;
+const extra = Constants.expoConfig?.extra || (Constants.manifest as any)?.extra || {};
+const AUTH0_DOMAIN = extra.AUTH0_DOMAIN || "";
+const AUTH0_CLIENT_ID = extra.AUTH0_CLIENT_ID || "";
+const API_URL = extra.apiBaseUrl || "";
 
 const discovery = {
     authorizationEndpoint: `https://${AUTH0_DOMAIN}/authorize`,

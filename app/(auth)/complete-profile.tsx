@@ -99,7 +99,13 @@ export default function CompleteProfile() {
         }
     };
     // DROPDOWN MODAL (REUSED FROM SIGNUP)
-    const renderDropdown = (data, visible, onSelect, onClose, selectedValue) => (
+    const renderDropdown = (
+        data: any[],
+        visible: boolean,
+        onSelect: (val: any) => void,
+        onClose: () => void,
+        selectedValue: any
+    ) => (
         <Modal visible={visible} transparent animationType="fade">
             <TouchableOpacity style={styles.modalOverlay} onPress={onClose}>
                 <View style={styles.dropdownContainer}>

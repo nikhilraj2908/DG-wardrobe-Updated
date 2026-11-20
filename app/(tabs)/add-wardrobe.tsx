@@ -258,8 +258,10 @@ export default function AddWardrobe() {
 
     const getCategoryIcon = (item: Category) => {
         const key = normalizeCategoryKey(item.name);
-        if (item.type === "mens" && CATEGORY_ICONS.mens[key]) return CATEGORY_ICONS.mens[key];
-        if (item.type === "womens" && CATEGORY_ICONS.womens[key]) return CATEGORY_ICONS.womens[key];
+        const mensIcons = CATEGORY_ICONS.mens as any;
+        if (item.type === "mens" && mensIcons[key]) return mensIcons[key];
+        const womensIcons = CATEGORY_ICONS.womens as any;
+        if (item.type === "womens" && womensIcons[key]) return womensIcons[key];
         return null;
     };
 
@@ -425,7 +427,7 @@ export default function AddWardrobe() {
             const arr = Array.isArray(selected) ? selected : [selected];
             const remaining = MAX_IMAGES - images.length;
             const limited = arr.slice(0, remaining);
-            const croppedImages = [];
+            const croppedImages: any[] = [];
             for (const img of limited) {
                 const cropped = await ImagePicker.openCropper({
                     path: img.path,

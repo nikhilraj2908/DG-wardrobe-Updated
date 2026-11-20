@@ -275,19 +275,21 @@ const getCategoryImage = (categoryName: string, gender: "mens" | "womens" | "uni
   ];
 
   if (gender === "mens" || gender === "unisex") {
+    const mensImgs = mensCategoryImages as any;
     for (const key of possibleKeys) {
-      if (mensCategoryImages[key]) {
-        return mensCategoryImages[key];
+      if (mensImgs[key]) {
+        return mensImgs[key];
       }
     }
-    return mensCategoryImages["default"];
+    return mensImgs["default"];
   } else if (gender === "womens") {
+    const womensImgs = womensCategoryImages as any;
     for (const key of possibleKeys) {
-      if (womensCategoryImages[key]) {
-        return womensCategoryImages[key];
+      if (womensImgs[key]) {
+        return womensImgs[key];
       }
     }
-    return womensCategoryImages["default"];
+    return womensImgs["default"];
   }
 
   return require("../../assets/images/icon.png");
@@ -348,7 +350,7 @@ const [activeCategoryName, setActiveCategoryName] = useState<string | null>(null
     users: SearchUser[];
   }>({ categories: [], users: [] });
   const { q } = useLocalSearchParams<{ q?: string }>();
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<any>(null);
   const { toggleSave, savedItemIds } = useSavedItems();
   useEffect(() => {
     if (!q || typeof q !== "string") return;
@@ -981,7 +983,7 @@ useEffect(() => {
     isCategories = false
   }: {
     data: any[];
-    renderItem: (item: any, index: number, columnIndex: number) => JSX.Element;
+    renderItem: (item: any, index: number, columnIndex: number) => React.ReactElement;
     keyExtractor: (item: any) => string;
     isCategories?: boolean;
   }) => {
@@ -1497,9 +1499,6 @@ const createStyles = (colors: any) =>
       right: 0,
       height: "40%",
       backgroundColor: "transparent",
-      backgroundGradient: "vertical",
-      backgroundGradientTop: "transparent",
-      backgroundGradientBottom: "rgba(0,0,0,0.8)",
     },
     categoryOverlay: {
       position: "absolute",

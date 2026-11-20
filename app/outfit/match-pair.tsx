@@ -648,7 +648,7 @@ export default function MatchPairScreen() {
       comboItems,
       outfitId: targetOutfitId || undefined,
       title: title || outfitName.trim() || "Matched Pair",
-      caption: outfitDesc.trim() || title || "Check out my new outfit combo!",
+      caption: title || (outfitName ? outfitName.trim() : "Check out my new outfit combo!"),
     });
   };
 
@@ -681,7 +681,7 @@ export default function MatchPairScreen() {
             <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
               {canvasGarments.length > 0 && (
                 <TouchableOpacity
-                  onPress={() => handleShareCurrentComboToStory(existingOutfitId, outfitName || "Matched Pair")}
+                  onPress={() => handleShareCurrentComboToStory(existingOutfitId || undefined, outfitName || "Matched Pair")}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   style={[styles.storyShareBtn, { backgroundColor: colors.primary }]}
                 >

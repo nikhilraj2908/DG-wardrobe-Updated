@@ -21,7 +21,7 @@ import AppBackground from "@/components/AppBackground";
 /* ================= SAFE API URL ================= */
 const API_URL =
   Constants.expoConfig?.extra?.apiBaseUrl ??
-  Constants.manifest?.extra?.apiBaseUrl ??
+  (Constants.manifest as any)?.extra?.apiBaseUrl ??
   "";
 
 if (!API_URL) {
