@@ -182,7 +182,7 @@ export default function AllWardrobesScreen() {
             {!selectionMode && (
               <TouchableOpacity
                 style={styles.addWardrobeBtn}
-                onPress={() => router.push("profile/create-wardrobe")}
+                onPress={() => router.push("/profile/create-wardrobe")}
               >
                 <Text style={styles.addWardrobeText}>+ Add New Wardrobe</Text>
               </TouchableOpacity>

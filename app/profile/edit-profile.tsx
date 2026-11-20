@@ -62,7 +62,7 @@ export default function EditProfileScreen() {
 
       if (!token) {
         Alert.alert("Error", "Please login again");
-        router.push("/login");
+        router.replace("/(auth)/login-options");
         return;
       }
 
@@ -166,7 +166,7 @@ export default function EditProfileScreen() {
 
       if (!token) {
         Alert.alert("Error", "Please login again");
-        router.push("/login");
+        router.replace("/(auth)/login-options");
         return;
       }
 

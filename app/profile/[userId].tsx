@@ -141,7 +141,7 @@ export default function OtherUserProfile() {
       const token = await AsyncStorage.getItem("token");
       if (!token) {
         Alert.alert("Login Required", "Please login to request premium access");
-        router.push("/login");
+        router.push("/(auth)/login-options");
         return;
       }
 
@@ -170,7 +170,7 @@ export default function OtherUserProfile() {
         Alert.alert("Request Already Sent", "You have already requested access.");
       } else if (error.response?.status === 401) {
         Alert.alert("Login Required", "Please login to request premium access");
-        router.push("/login");
+        router.push("/(auth)/login-options");
       } else {
         Alert.alert("Error", "Failed to send request. Please try again.");
       }
@@ -292,7 +292,7 @@ export default function OtherUserProfile() {
       const token = await AsyncStorage.getItem("token");
       if (!token) {
         Alert.alert("Login Required", "Please login to view premium items");
-        router.push("/login");
+        router.push("/(auth)/login-options");
         return;
       }
 

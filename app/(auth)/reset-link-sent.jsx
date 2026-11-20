@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import Icon from "react-native-vector-icons/Ionicons";
+import { Ionicons as Icon } from "@expo/vector-icons";
 
 export default function ResetLinkSent() {
   return (

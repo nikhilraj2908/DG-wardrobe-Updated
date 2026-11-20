@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Alert,
   Image,
@@ -11,26 +11,28 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
 import api from "../../api/api";
 
 export default function ResetPasswordScreen() {
-
   const params = useLocalSearchParams();
-const email =
-  Array.isArray(params.email) ? params.email[0] : params.email;
-
-if (!email || !email.includes("@")) {
-  Alert.alert("Error", "Invalid reset link. Please try again.");
-  router.replace("/(auth)/forgot-password");
-  return null;
-}
-
-
+  const email =
+    Array.isArray(params.email) ? params.email[0] : params.email;
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!email || !email.includes("@")) {
+      Alert.alert("Error", "Invalid reset link. Please try again.");
+      router.replace("/(auth)/forgot-password");
+    }
+  }, [email]);
+
+  if (!email || !email.includes("@")) {
+    return null;
+  }
 
   const resetPassword = async () => {
     if (!password || !confirm) {
@@ -82,7 +84,7 @@ if (!email || !email.includes("@")) {
     >
       <View style={styles.container}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Icon name="arrow-back" size={22} />
+          <Ionicons name="arrow-back" size={22} color="#000" />
         </TouchableOpacity>
 
         <Image

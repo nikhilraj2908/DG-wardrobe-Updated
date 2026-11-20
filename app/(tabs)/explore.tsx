@@ -401,7 +401,7 @@ const [activeCategoryName, setActiveCategoryName] = useState<string | null>(null
     setHasMore(true);
 
     // Fetch items immediately when category is selected
-    fetchItemsByCategory(category._id, category.type, 1, true);
+    fetchItemsByCategory(category._id, 1, true);
   };
 
   // Fetch items by category
@@ -1014,12 +1014,12 @@ useEffect(() => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => {
-                const category = categories.find(cat =>
-                  cat.name.toLowerCase() === activeCategory.toLowerCase()
-                );
+                const targetId = activeCategoryId || categories.find(cat =>
+                  activeCategory && cat.name.toLowerCase() === activeCategory.toLowerCase()
+                )?._id;
 
-                if (category) {
-                  fetchItemsByCategory(category._id, category.type, 1, true);
+                if (targetId) {
+                  fetchItemsByCategory(targetId, 1, true);
                 }
               }}
               colors={[colors.primary]}
@@ -1028,19 +1028,18 @@ useEffect(() => {
           ) : undefined
         }
         onScroll={({ nativeEvent }) => {
-          if (mode === "items" && !loading && hasMore && activeCategory) {
+          if (mode === "items" && !loading && hasMore && (activeCategoryId || activeCategory)) {
             const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
             const isCloseToBottom = layoutMeasurement.height + contentOffset.y >=
               contentSize.height - 100;
 
             if (isCloseToBottom) {
-              // Find the category again
-              const category = categories.find(cat =>
-                cat.name.toLowerCase() === activeCategory.toLowerCase()
-              );
+              const targetId = activeCategoryId || categories.find(cat =>
+                activeCategory && cat.name.toLowerCase() === activeCategory.toLowerCase()
+              )?._id;
 
-              if (category) {
-                fetchItemsByCategory(category._id, category.type, page + 1, false);
+              if (targetId) {
+                fetchItemsByCategory(targetId, page + 1, false);
               }
             }
           }

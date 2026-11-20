@@ -174,7 +174,7 @@ export default function AddStory() {
       const token = await AsyncStorage.getItem("token");
       if (!token) {
         Alert.alert("Authentication Required", "Please login again");
-        router.replace("/login");
+        router.replace("/(auth)/login-options");
         return;
       }
 
