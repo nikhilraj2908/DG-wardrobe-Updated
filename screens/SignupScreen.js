@@ -120,14 +120,26 @@ export default function SignupScreen() {
 
   // Handle regular signup
   const handleSignup = async () => {
-    if (!username || !email || !password || !confirmPassword || !gender || !phone || !day || !month || !year) {
-      alert("Please fill all fields");
+    if (!email || !password || !confirmPassword || !gender || !phone || !day || !month || !year) {
+      alert("Please fill all required fields");
       return;
     }
 
     if (password !== confirmPassword) {
       alert("Passwords do not match");
       return;
+    }
+
+    const cleanUsername = username.trim().replace(/^@+/, "").toLowerCase();
+    if (cleanUsername) {
+      if (cleanUsername.length < 3 || cleanUsername.length > 30) {
+        alert("Username must be between 3 and 30 characters");
+        return;
+      }
+      if (!/^[a-z0-9_.]+$/.test(cleanUsername)) {
+        alert("Username can only contain letters, numbers, underscores, and periods");
+        return;
+      }
     }
 
     const dob = `${year}-${String(months.indexOf(month) + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -137,8 +149,8 @@ export default function SignupScreen() {
 
     try {
       const response = await api.post("/api/auth/register", {
-        username,
-        email,
+        username: cleanUsername || undefined,
+        email: email.trim().toLowerCase(),
         password,
         gender: gender === "male" ? "Male" : "Female",
         mobile,
@@ -228,14 +240,15 @@ export default function SignupScreen() {
           <Text style={styles.orText}>OR</Text>
 
           {/* USERNAME */}
-          <Text style={styles.label}>Username</Text>
+          <Text style={styles.label}>Username (optional)</Text>
           <TextInput
-            placeholder="Choose a username"
+            placeholder="Choose username (defaults to @email)"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
+            autoCorrect={false}
           />
 
           {/* PASSWORD */}

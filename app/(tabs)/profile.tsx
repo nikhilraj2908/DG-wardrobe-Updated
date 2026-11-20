@@ -477,8 +477,9 @@ export default function ProfileScreen() {
       const formattedWorth = formatPrice(totalWorth);
 
       // Extract user data
-      const userName = user.username || "User";
-      const userHandle = user.email ? `@${user.email.split('@')[0]}` : `@${user.username || "user"}`;
+      const rawHandle = (user.username || user.email?.split('@')[0] || "user").replace(/^@+/, "").toLowerCase();
+      const userName = user.username || rawHandle;
+      const userHandle = `@${rawHandle}`;
       const userBio = user.bio || createUserBio(user);
 
       // Set user data

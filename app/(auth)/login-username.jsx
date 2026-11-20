@@ -26,8 +26,9 @@ export default function LoginWithUsername() {
   const { isAuthenticated, isLoading, login } = useAuth();
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      Alert.alert("Error", "Please enter username and password");
+    const cleanIdentifier = username.trim().replace(/^@+/, "");
+    if (!cleanIdentifier || !password) {
+      Alert.alert("Error", "Please enter username or email and password");
       return;
     }
 
@@ -35,13 +36,12 @@ export default function LoginWithUsername() {
 
     try {
       const res = await axios.post(`${API_URL}/api/auth/login`, {
-        username,
+        username: cleanIdentifier,
         password,
       });
 
       // Call login to save token
       await login(res.data.token, res.data.user.profileCompleted);
-
 
       // Now navigate to profile
       Alert.alert("Success", "Login successful!");
@@ -75,13 +75,15 @@ export default function LoginWithUsername() {
 
         <Text style={styles.title}>Welcome Back</Text>
 
-        <Text style={styles.label}>Username</Text>
+        <Text style={styles.label}>Username or Email</Text>
         <TextInput
-          placeholder="Enter your username"
+          placeholder="Enter username (e.g. nikhil) or email"
           style={styles.input}
           placeholderTextColor="#8E8E8E"
           value={username}
           onChangeText={setUsername}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <Text style={styles.label}>Password</Text>

@@ -53,6 +53,11 @@ export default function EditProfileScreen() {
   const [mobile, setMobile] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<{
+    checking: boolean;
+    available?: boolean;
+    message?: string;
+  }>({ checking: false });
   const baseURL = api.defaults.baseURL!;
 
   // Fetch user profile data
@@ -82,7 +87,7 @@ export default function EditProfileScreen() {
       setGender(userData.gender || "");
 
       if (userData.photo) {
-        setProfileImage(resolveImageUrl(userData.photo));
+        setProfileImage(resolveImageUrl(userData.photo) || null);
       }
 
       if (userData.dob) {
@@ -100,6 +105,73 @@ export default function EditProfileScreen() {
   useEffect(() => {
     fetchUserProfile();
   }, []);
+
+  // Debounced username availability check
+  useEffect(() => {
+    if (!userProfile) return;
+
+    const clean = username.trim().replace(/^@+/, "").toLowerCase();
+    const current = (userProfile.username || "").trim().toLowerCase();
+
+    if (!clean) {
+      setUsernameStatus({ checking: false, available: false, message: "Username cannot be empty." });
+      return;
+    }
+
+    if (clean === current) {
+      setUsernameStatus({ checking: false });
+      return;
+    }
+
+    if (clean.length < 3 || clean.length > 30) {
+      setUsernameStatus({
+        checking: false,
+        available: false,
+        message: "Username must be between 3 and 30 characters.",
+      });
+      return;
+    }
+
+    if (!/^[a-z0-9_.]+$/.test(clean)) {
+      setUsernameStatus({
+        checking: false,
+        available: false,
+        message: "Only letters, numbers, underscores, and periods are allowed.",
+      });
+      return;
+    }
+
+    setUsernameStatus({ checking: true });
+    const timer = setTimeout(async () => {
+      try {
+        const token = await storage.getItem("token");
+        const res = await api.get(`/api/user/check-username?username=${clean}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data.available) {
+          setUsernameStatus({
+            checking: false,
+            available: true,
+            message: "Username is available",
+          });
+        } else {
+          setUsernameStatus({
+            checking: false,
+            available: false,
+            message: res.data.message || "This username is already taken. Please choose another one.",
+          });
+        }
+      } catch (err: any) {
+        setUsernameStatus({
+          checking: false,
+          available: false,
+          message: err.response?.data?.message || "Failed to check username availability.",
+        });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [username, userProfile]);
 
   const pickFromGallery = async () => {
     try {
@@ -157,9 +229,21 @@ export default function EditProfileScreen() {
 
   const handleSaveProfile = async () => {
     try {
-      const targetUsername = (username || name || "").trim();
-      if (!targetUsername && !userProfile?.username) {
-        Alert.alert("Validation Error", "Username is required");
+      const cleanUsername = (username || "").trim().replace(/^@+/, "").toLowerCase();
+      if (!cleanUsername) {
+        Alert.alert("Validation Error", "Username cannot be empty.");
+        return;
+      }
+      if (cleanUsername.length < 3 || cleanUsername.length > 30) {
+        Alert.alert("Validation Error", "Username must be between 3 and 30 characters.");
+        return;
+      }
+      if (!/^[a-z0-9_.]+$/.test(cleanUsername)) {
+        Alert.alert("Validation Error", "Username can only contain letters, numbers, underscores, and periods.");
+        return;
+      }
+      if (usernameStatus.available === false) {
+        Alert.alert("Error", usernameStatus.message || "This username is already taken. Please choose another one.");
         return;
       }
 
@@ -172,12 +256,30 @@ export default function EditProfileScreen() {
         return;
       }
 
+      const currentUsername = (userProfile?.username || "").trim().toLowerCase();
+      // If username changed, verify availability before upload
+      if (cleanUsername !== currentUsername) {
+        try {
+          const checkRes = await api.get(`/api/user/check-username?username=${cleanUsername}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!checkRes.data.available) {
+            setSaving(false);
+            Alert.alert("Error", checkRes.data.message || "This username is already taken. Please choose another one.");
+            return;
+          }
+        } catch (checkErr: any) {
+          setSaving(false);
+          Alert.alert("Error", checkErr.response?.data?.message || "This username is already taken. Please choose another one.");
+          return;
+        }
+      }
+
       const formData = new FormData();
 
       // Only send username if it was changed or is being newly set
-      const currentUsername = (userProfile?.username || "").trim();
-      if (targetUsername && targetUsername !== currentUsername) {
-        formData.append('username', targetUsername);
+      if (cleanUsername !== currentUsername) {
+        formData.append('username', cleanUsername);
       }
 
       // Only send mobile if it was changed
@@ -311,17 +413,47 @@ export default function EditProfileScreen() {
 
           {/* Username */}
           <Text style={styles.label}>Username</Text>
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={(text) => {
-              setUsername(text);
-              setName(text);
-            }}
-            placeholder="Enter username"
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-          />
+          <View
+            style={[
+              styles.usernameInputContainer,
+              usernameStatus.available === false && styles.inputErrorBorder,
+              usernameStatus.available === true && styles.inputSuccessBorder,
+            ]}
+          >
+            <Text style={styles.atPrefix}>@</Text>
+            <TextInput
+              style={styles.usernameInput}
+              value={username}
+              onChangeText={(text) => {
+                const cleaned = text.replace(/^@+/, "").toLowerCase();
+                setUsername(cleaned);
+                setName(cleaned);
+              }}
+              placeholder="username"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {usernameStatus.checking && (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />
+            )}
+            {!usernameStatus.checking && usernameStatus.available === true && (
+              <Ionicons name="checkmark-circle" size={20} color="#10B981" style={{ marginRight: 8 }} />
+            )}
+            {!usernameStatus.checking && usernameStatus.available === false && (
+              <Ionicons name="alert-circle" size={20} color="#EF4444" style={{ marginRight: 8 }} />
+            )}
+          </View>
+          {usernameStatus.message ? (
+            <Text
+              style={[
+                styles.feedbackText,
+                usernameStatus.available ? styles.feedbackSuccess : styles.feedbackError,
+              ]}
+            >
+              {usernameStatus.message}
+            </Text>
+          ) : null}
 
           {/* Email (Read-only) */}
           <Text style={styles.label}>Email</Text>
@@ -512,6 +644,44 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.surface,
       fontSize: 16,
       color: colors.textPrimary,
+    },
+    usernameInputContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 12,
+    },
+    inputErrorBorder: {
+      borderColor: "#EF4444",
+    },
+    inputSuccessBorder: {
+      borderColor: "#10B981",
+    },
+    atPrefix: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.primary,
+      marginRight: 4,
+    },
+    usernameInput: {
+      flex: 1,
+      paddingVertical: 14,
+      fontSize: 16,
+      color: colors.textPrimary,
+    },
+    feedbackText: {
+      fontSize: 12,
+      marginTop: 6,
+      marginLeft: 4,
+    },
+    feedbackSuccess: {
+      color: "#10B981",
+    },
+    feedbackError: {
+      color: "#EF4444",
     },
     readOnlyInput: {
       backgroundColor: colors.card,

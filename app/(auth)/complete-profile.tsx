@@ -67,7 +67,9 @@ export default function CompleteProfile() {
             setLoading(true);
 
             const payload: any = { mobile, gender, dob };
-            if (username.trim()) payload.username = username;
+            if (username.trim()) {
+                payload.username = username.trim().replace(/^@+/, "").toLowerCase();
+            }
 
             const response = await api.post(
                 "/api/auth/complete-profile",
