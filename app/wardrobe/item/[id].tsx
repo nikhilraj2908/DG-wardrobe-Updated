@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from "expo-router";
 
 import AppBackground from "@/components/AppBackground";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
+import { promptShareToStory } from "@/utils/shareToStory";
 import { useEffect, useState, useMemo } from "react";
 import {
     ActivityIndicator,
@@ -151,6 +152,28 @@ export default function ItemDetails() {
         } finally {
             setActionLoading(false);
         }
+    };
+
+    const handleSharePostToStory = () => {
+        if (!item) return;
+        const postMedia =
+            item.images?.[0] ||
+            item.imageUrl ||
+            item.image ||
+            item.cutoutImage;
+
+        if (!postMedia) {
+            Alert.alert("Unable to Share", "This post does not contain a shareable image.");
+            return;
+        }
+
+        promptShareToStory({
+            type: "post",
+            media: postMedia,
+            itemId: item._id,
+            title: item.title || item.name || item.brand || "Wardrobe Item",
+            caption: item.description || item.title || "Check out this wardrobe item!",
+        });
     };
 
     const fetchLikeStatus = async () => {
@@ -386,6 +409,15 @@ export default function ItemDetails() {
                                         style={styles.actionImageIcon}
                                     />
                                     <Text style={{ color: colors.textPrimary }}>{commentCount}</Text>
+                                </TouchableOpacity>
+
+                                {/* SHARE TO STORY */}
+                                <TouchableOpacity
+                                    onPress={handleSharePostToStory}
+                                    style={styles.actionBtn}
+                                >
+                                    <Ionicons name="paper-plane-outline" size={22} color={colors.textPrimary} />
+                                    <Text style={{ color: colors.textPrimary }}>Share</Text>
                                 </TouchableOpacity>
                             </View>
 

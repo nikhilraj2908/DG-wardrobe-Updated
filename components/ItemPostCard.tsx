@@ -1,4 +1,5 @@
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
+import { promptShareToStory } from "@/utils/shareToStory";
 import { Ionicons } from "@expo/vector-icons";
 import { storage } from "../utils/storage";
 import { router, useLocalSearchParams } from "expo-router";
@@ -148,6 +149,27 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
     } catch (error) {
       console.error("Error fetching comments:", error);
     }
+  };
+
+  const handleSharePostToStory = () => {
+    const postMedia =
+      item.images?.[0] ||
+      item.imageUrl ||
+      item.image ||
+      item.cutoutImage;
+
+    if (!postMedia) {
+      Alert.alert("Unable to Share", "This post does not contain a shareable image.");
+      return;
+    }
+
+    promptShareToStory({
+      type: "post",
+      media: postMedia,
+      itemId: item._id,
+      title: item.name || item.title || "Post",
+      caption: item.description || item.name || "Check out this wardrobe item!",
+    });
   };
 
   const handleLike = async () => {
@@ -498,6 +520,10 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
                 source={require("../assets/icons/comment.png")}
                 style={styles.actionImageIcon}
               />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleSharePostToStory} style={styles.actionIcon}>
+              <Ionicons name="paper-plane-outline" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 

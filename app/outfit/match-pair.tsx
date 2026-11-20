@@ -21,6 +21,7 @@ import { useTheme } from "@/app/theme/ThemeContext";
 import api from "@/api/api";
 import { storage } from "@/utils/storage";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
+import { promptShareToStory } from "@/utils/shareToStory";
 import AppBackground from "@/components/AppBackground";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -549,10 +550,19 @@ export default function MatchPairScreen() {
       }
 
       setSaveModalVisible(false);
+      const savedOutfitId = res.data?.outfit?._id || existingOutfitId;
+      const outfitTitle = res.data?.outfit?.name || outfitName.trim() || "Matched Pair";
+
       Alert.alert(
         isUpdating ? "Pair Updated! 🎉" : "Pair Saved! 🎉",
-        `"${res.data?.outfit?.name || outfitName.trim() || "Matched Pair"}" has been ${isUpdating ? "updated" : "saved"} in your wardrobe profile.`,
+        `"${outfitTitle}" has been ${isUpdating ? "updated" : "saved"} in your wardrobe profile.`,
         [
+          {
+            text: "Share to Story",
+            onPress: () => {
+              handleShareCurrentComboToStory(savedOutfitId, outfitTitle);
+            },
+          },
           {
             text: "View Profile",
             onPress: () => router.push("/(tabs)/profile"),
@@ -569,6 +579,30 @@ export default function MatchPairScreen() {
     } finally {
       setSavingOutfit(false);
     }
+  };
+
+  const handleShareCurrentComboToStory = (outfitId?: string, title?: string) => {
+    let mediaUri = "";
+    for (const g of canvasGarments) {
+      const u = g.cutoutImage || g.images?.[0] || g.imageUrl || g.image;
+      if (u) {
+        mediaUri = u;
+        break;
+      }
+    }
+
+    if (!mediaUri) {
+      Alert.alert("Unable to Share", "No garment image found on the canvas to share.");
+      return;
+    }
+
+    promptShareToStory({
+      type: "combo",
+      media: mediaUri,
+      outfitId: outfitId || existingOutfitId || undefined,
+      title: title || outfitName.trim() || "Matched Pair",
+      caption: outfitDesc.trim() || title || "Check out my new outfit combo!",
+    });
   };
 
   return (
@@ -598,6 +632,16 @@ export default function MatchPairScreen() {
             </View>
 
             <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+              {canvasGarments.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => handleShareCurrentComboToStory(existingOutfitId, outfitName || "Matched Pair")}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={[styles.storyShareBtn, { backgroundColor: colors.primary }]}
+                >
+                  <Ionicons name="paper-plane-outline" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+
               {canvasGarments.length > 0 && (
                 <TouchableOpacity
                   onPress={handleClearCanvas}
@@ -1036,6 +1080,13 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     padding: 6,
+  },
+  storyShareBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
   },
   saveBtn: {
     flexDirection: "row",

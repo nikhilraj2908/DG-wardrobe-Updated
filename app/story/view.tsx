@@ -274,6 +274,60 @@ useEffect(() => {
           )}
         </Pressable>
 
+        {/* Post or Combo interactive banner */}
+        {story.storyType === "post" && (
+          <TouchableOpacity
+            style={styles.storySticker}
+            onPress={() => {
+              const targetId = story.item?._id || story.item;
+              if (targetId) {
+                router.push(`/wardrobe/item/${targetId}`);
+              }
+            }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.storyStickerIconWrapper}>
+              <Ionicons name="shirt-outline" size={16} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.storyStickerTitle} numberOfLines={1}>
+                {story.item?.name || story.caption || "View Post"}
+              </Text>
+              {story.item?.price !== undefined && (
+                <Text style={styles.storyStickerSubtitle}>₹{story.item.price}</Text>
+              )}
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
+
+        {story.storyType === "combo" && (
+          <TouchableOpacity
+            style={styles.storySticker}
+            onPress={() => {
+              const targetOutfitId = story.outfit?._id || story.outfit;
+              if (targetOutfitId) {
+                router.push({
+                  pathname: "/outfit/match-pair",
+                  params: { outfitId: targetOutfitId },
+                });
+              }
+            }}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.storyStickerIconWrapper, { backgroundColor: "#7C3AED" }]}>
+              <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.storyStickerTitle} numberOfLines={1}>
+                {story.outfit?.name || story.caption || "View Matched Combo"}
+              </Text>
+              <Text style={styles.storyStickerSubtitle}>Tap to explore outfit</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
+
         {/* Views - clickable only for owner */}
         <TouchableOpacity
           style={styles.viewsContainer}
@@ -372,6 +426,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   views: { color: "#fff", fontSize: 14 },
+  storySticker: {
+    position: "absolute",
+    bottom: 84,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(17, 24, 39, 0.85)",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    gap: 12,
+    zIndex: 10,
+  },
+  storyStickerIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#A855F7",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  storyStickerTitle: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  storyStickerSubtitle: {
+    color: "#E2E8F0",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 1,
+  },
   // Modal styles
   modalOverlay: {
     flex: 1,

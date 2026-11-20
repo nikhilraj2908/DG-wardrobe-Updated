@@ -1,6 +1,7 @@
 import AppBackground from "@/components/AppBackground";
 import { useFollow } from "@/context/FollowContext";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
+import { promptShareToStory } from "@/utils/shareToStory";
 import { Ionicons } from "@expo/vector-icons";
 import { storage } from "@/utils/storage";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -260,6 +261,33 @@ export default function ProfileScreen() {
     } catch (err) {
       console.log("Error loading matched pairs:", err);
     }
+  };
+
+  const handleShareComboToStory = (pair: any) => {
+    let mediaUri = "";
+    if (pair.items && Array.isArray(pair.items)) {
+      for (const slot of pair.items) {
+        const g = slot.item || {};
+        const u = g.cutoutImage || g.images?.[0] || g.imageUrl || g.image;
+        if (u) {
+          mediaUri = u;
+          break;
+        }
+      }
+    }
+
+    if (!mediaUri) {
+      Alert.alert("Unable to Share", "No garment image found in this combo.");
+      return;
+    }
+
+    promptShareToStory({
+      type: "combo",
+      media: mediaUri,
+      outfitId: pair._id,
+      title: pair.name || "Matched Pair",
+      caption: pair.description || pair.name || "Check out my matched combo!",
+    });
   };
 
   const deleteMatchedPair = async (outfitId: string) => {
@@ -971,6 +999,18 @@ useEffect(() => {
                         </View>
 
                         <View style={styles.pairHeaderActionsRow}>
+                          {/* Share to Story */}
+                          <TouchableOpacity
+                            style={styles.pairShareBtn}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleShareComboToStory(pair);
+                            }}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          >
+                            <Ionicons name="paper-plane-outline" size={17} color="#7C3AED" />
+                          </TouchableOpacity>
+
                           {/* Edit / View in Canvas */}
                           <TouchableOpacity
                             style={styles.pairSettingsBtn}
@@ -1534,6 +1574,14 @@ const createStyles = (theme: any) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+    },
+    pairShareBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: "#F3E8FF",
+      justifyContent: "center",
+      alignItems: "center",
     },
     pairSettingsBtn: {
       width: 36,
