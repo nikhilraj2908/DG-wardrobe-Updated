@@ -231,9 +231,11 @@ export default function SignupScreen() {
           <Text style={styles.label}>Username</Text>
           <TextInput
             placeholder="Choose a username"
+            placeholderTextColor="#9CA3AF"
             style={styles.input}
             value={username}
             onChangeText={setUsername}
+            autoCapitalize="none"
           />
 
           {/* PASSWORD */}
@@ -241,6 +243,7 @@ export default function SignupScreen() {
           <View style={styles.passwordContainer}>
             <TextInput
               placeholder="Create password"
+              placeholderTextColor="#9CA3AF"
               secureTextEntry={!passwordVisible}
               style={styles.inputPassword}
               value={password}
@@ -256,6 +259,7 @@ export default function SignupScreen() {
           <View style={styles.passwordContainer}>
             <TextInput
               placeholder="Confirm password"
+              placeholderTextColor="#9CA3AF"
               secureTextEntry={!confirmPasswordVisible}
               style={styles.inputPassword}
               value={confirmPassword}
@@ -323,6 +327,7 @@ export default function SignupScreen() {
             <Text style={styles.callingCode}>{selectedCountry.dial}</Text>
             <TextInput
               placeholder="Enter mobile number"
+              placeholderTextColor="#9CA3AF"
               keyboardType="number-pad"
               style={styles.phoneInput}
               value={phone}
@@ -334,6 +339,7 @@ export default function SignupScreen() {
           <Text style={styles.label}>Email</Text>
           <TextInput
             placeholder="Enter your email"
+            placeholderTextColor="#9CA3AF"
             style={styles.input}
             value={email}
             onChangeText={setEmail}
@@ -421,6 +427,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
     fontSize: 14,
+    color: "#111827",
   },
   passwordContainer: {
     flexDirection: "row",
@@ -436,6 +443,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     fontSize: 14,
+    color: "#111827",
   },
   genderRow: {
     marginBottom: 10,
@@ -493,6 +501,7 @@ const styles = StyleSheet.create({
   phoneInput: {
     flex: 1,
     fontSize: 14,
+    color: "#111827",
   },
   dobRow: {
     flexDirection: "row",

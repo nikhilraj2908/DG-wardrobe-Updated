@@ -138,6 +138,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  backBtn: {
+    alignSelf: "flex-start",
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#F4EBFF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+
   iconWrapper: {
     marginBottom: 20,
   },

@@ -159,6 +159,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F4EBFF",
     justifyContent: "center", alignItems: "center",
     marginBottom: 30,
+    alignSelf: "flex-start",
   },
   title: { fontSize: 26, fontWeight: "800", textAlign: "center" },
   subtitle: { textAlign: "center", color: "#666", marginBottom: 25 },
