@@ -22,6 +22,9 @@ export default function TabsLayout() {
   const colors = theme.colors;
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  const activeColor = colors.primaryDark || "#7C3AED";
+  const inactiveColor = "#475569"; // High-contrast, sharp slate (bold, not dull/washed out)
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -42,11 +45,11 @@ export default function TabsLayout() {
             shadowRadius: 4,
             backgroundColor: colors.surface,
           },
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textMuted,
+          tabBarActiveTintColor: activeColor,
+          tabBarInactiveTintColor: inactiveColor,
           tabBarLabelStyle: {
             fontSize: 12,
-            fontWeight: "500",
+            fontWeight: "700",
             marginBottom: 4,
           },
         }}
@@ -59,8 +62,8 @@ export default function TabsLayout() {
               <Image
                 source={require("../../assets/icons/home.png")}
                 style={[
-                  styles.tabIcon,
-                  { tintColor: focused ? colors.primary : colors.textMuted },
+                  focused ? styles.tabIconActive : styles.tabIcon,
+                  { tintColor: focused ? activeColor : inactiveColor },
                 ]}
               />
             ),
@@ -75,8 +78,8 @@ export default function TabsLayout() {
               <Image
                 source={require("../../assets/icons/search.png")}
                 style={[
-                  styles.tabIcon,
-                  { tintColor: focused ? colors.primary : colors.textMuted },
+                  focused ? styles.tabIconActive : styles.tabIcon,
+                  { tintColor: focused ? activeColor : inactiveColor },
                 ]}
               />
             ),
@@ -101,7 +104,7 @@ export default function TabsLayout() {
                   }}
                 >
                   <View style={styles.centerButtonInner}>
-                    <Ionicons name="add" size={32}/>
+                    <Ionicons name="add" size={34} color="#FFFFFF" />
                   </View>
                 </TouchableOpacity>
               </View>
@@ -117,8 +120,8 @@ export default function TabsLayout() {
               <Image
                 source={require("../../assets/icons/logo.png")}
                 style={[
-                  styles.wardrobeIcon,
-                  { tintColor: focused ? colors.primary : colors.textMuted },
+                  focused ? styles.wardrobeIconActive : styles.wardrobeIcon,
+                  { tintColor: focused ? activeColor : inactiveColor },
                 ]}
               />
             ),
@@ -133,8 +136,8 @@ export default function TabsLayout() {
               <Image
                 source={require("../../assets/icons/person.png")}
                 style={[
-                  styles.tabIcon,
-                  { tintColor: focused ? colors.primary : colors.textMuted },
+                  focused ? styles.tabIconActive : styles.tabIcon,
+                  { tintColor: focused ? activeColor : inactiveColor },
                 ]}
               />
             ),
@@ -148,12 +151,21 @@ export default function TabsLayout() {
 const createStyles = (colors: any) =>
   StyleSheet.create({
     tabIcon: {
-      width: 28,
-      height: 28,
+      width: 27,
+      height: 27,
       resizeMode: "contain",
-      
+    },
+    tabIconActive: {
+      width: 29,
+      height: 29,
+      resizeMode: "contain",
     },
     wardrobeIcon: {
+      width: 48,
+      height: 48,
+      resizeMode: "contain",
+    },
+    wardrobeIconActive: {
       width: 50,
       height: 50,
       resizeMode: "contain",
