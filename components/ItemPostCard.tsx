@@ -568,48 +568,11 @@ export default function ItemPostCard({ item, onDelete, currentUserId, currentUse
           </TouchableOpacity>
         </View>
 
-        {/* Compact Stats Row: Overlapping liker avatars + Likes count & Comments count */}
+        {/* Compact Stats Row: Likes count & Comments count */}
         <View style={styles.statsRow}>
-          <View style={styles.likesCluster}>
-            {likeCount > 0 && (
-              <View style={styles.overlappingAvatars}>
-                {(likers.length > 0
-                  ? likers.slice(0, 3)
-                  : [
-                      {
-                        _id: "default-liker",
-                        photo: loggedInUserAvatar,
-                        username: loggedInUserInitial,
-                      },
-                    ]
-                ).map((liker: any, idx: number) => {
-                  const photoUrl = liker?.photo ? resolveImageUrl(liker.photo) : null;
-                  return (
-                    <View
-                      key={liker?._id || idx}
-                      style={[
-                        styles.miniAvatarWrapper,
-                        { marginLeft: idx === 0 ? 0 : -8, zIndex: 10 - idx },
-                      ]}
-                    >
-                      {photoUrl ? (
-                        <Image source={{ uri: photoUrl }} style={styles.miniAvatar} />
-                      ) : (
-                        <View style={[styles.miniAvatarPlaceholder, { backgroundColor: colors.primary }]}>
-                          <Text style={styles.miniAvatarInitial}>
-                            {liker?.username?.[0]?.toUpperCase() || "U"}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-            <Text style={[styles.likesCountText, { color: colors.textPrimary }]}>
-              {likeCount} {likeCount === 1 ? "like" : "likes"}
-            </Text>
-          </View>
+          <Text style={[styles.likesCountText, { color: colors.textPrimary }]}>
+            {likeCount} {likeCount === 1 ? "like" : "likes"}
+          </Text>
 
           {/* Right: Comments count (clickable to open comments modal) */}
           <TouchableOpacity onPress={handleOpenComments} activeOpacity={0.7}>
@@ -664,9 +627,9 @@ export default function ItemPostCard({ item, onDelete, currentUserId, currentUse
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons
-                name="paper-plane-outline"
-                size={20}
-                color={commentText.trim() ? "#F59E0B" : "#F59E0B"}
+                name="arrow-forward"
+                size={21}
+                color={commentText.trim() ? colors.primary : colors.textMuted}
               />
             </TouchableOpacity>
           </View>
@@ -957,41 +920,8 @@ const createStyles = (colors: any) =>
       paddingTop: 4,
       paddingBottom: 4,
     },
-    likesCluster: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    overlappingAvatars: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginRight: 8,
-    },
-    miniAvatarWrapper: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 1.5,
-      borderColor: colors.surface || "#FFFFFF",
-      overflow: "hidden",
-      backgroundColor: "#E2E8F0",
-    },
-    miniAvatar: {
-      width: "100%",
-      height: "100%",
-    },
-    miniAvatarPlaceholder: {
-      width: "100%",
-      height: "100%",
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    miniAvatarInitial: {
-      color: "#FFFFFF",
-      fontSize: 10,
-      fontWeight: "700",
-    },
     likesCountText: {
-      fontSize: 13.5,
+      fontSize: 14,
       fontWeight: "700",
     },
     commentsCountText: {
