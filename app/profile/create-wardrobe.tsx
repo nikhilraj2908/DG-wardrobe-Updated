@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
@@ -52,7 +53,7 @@ export default function CreateWardrobe() {
     try {
       setLoading(true);
 
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) {
         Alert.alert("Error", "Please login again");
         return;

@@ -2,6 +2,7 @@ import AppBackground from "@/components/AppBackground";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import ImagePicker from 'react-native-image-crop-picker';
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -58,7 +59,7 @@ export default function EditProfileScreen() {
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
 
       if (!token) {
         Alert.alert("Error", "Please login again");
@@ -162,7 +163,7 @@ export default function EditProfileScreen() {
       }
 
       setSaving(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
 
       if (!token) {
         Alert.alert("Error", "Please login again");
@@ -207,7 +208,7 @@ export default function EditProfileScreen() {
 
       Alert.alert("Success", "Profile updated successfully!");
       router.push({
-        pathname: '/profile',
+        pathname: '/(tabs)/profile' as any,
         params: { refresh: 'true', timestamp: Date.now().toString() }
       });
 

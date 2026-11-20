@@ -3,6 +3,7 @@ import AppBackground from "@/components/AppBackground";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -54,7 +55,7 @@ export default function PremiumRequestsPage() {
 
   const loadRequests = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       const pendingRes = await api.get("/api/premium/requests", {
@@ -75,7 +76,7 @@ export default function PremiumRequestsPage() {
 
   const respond = async (requestId: string, action: "approve" | "reject") => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       await api.post(
@@ -102,7 +103,7 @@ export default function PremiumRequestsPage() {
           style: "destructive",
           onPress: async () => {
             try {
-              const token = await AsyncStorage.getItem("token");
+              const token = await storage.getItem("token");
               if (!token) return;
 
               await api.post(

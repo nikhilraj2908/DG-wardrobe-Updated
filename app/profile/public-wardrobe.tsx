@@ -2,6 +2,7 @@ import AppBackground from "@/components/AppBackground";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useCallback } from "react";
@@ -184,7 +185,7 @@ export default function PublicWardrobeScreen() {
   const fetchUserPublicItems = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
 
       const res = await api.get(`/api/wardrobe/user/${userId}/items`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,

@@ -1,6 +1,7 @@
 import WardrobeHeader from "@/components/WardrobeHeader";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
@@ -1080,13 +1081,13 @@ useEffect(() => {
 
   const handleUserPress = async (userId: string) => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (token) {
         const meRes = await api.get("/api/user/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (String(meRes.data?._id) === String(userId)) {
-          router.push("/profile");
+          router.push("/(tabs)/profile" as any);
           return;
         }
       }

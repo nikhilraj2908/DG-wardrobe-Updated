@@ -4,6 +4,7 @@ import { useFollow } from "@/context/FollowContext";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -105,7 +106,7 @@ export default function OtherUserProfile() {
 
     try {
       setIsCheckingPremium(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       const accessRes = await api.get(
@@ -138,7 +139,7 @@ export default function OtherUserProfile() {
   // Request access to premium items
   const requestPremiumAccess = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) {
         Alert.alert("Login Required", "Please login to request premium access");
         router.push("/(auth)/login-options");
@@ -180,7 +181,7 @@ export default function OtherUserProfile() {
   // Load premium requests (for owner)
   const loadPremiumRequests = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) return;
 
       const response = await api.get('/api/premium/requests', {
@@ -196,7 +197,7 @@ export default function OtherUserProfile() {
   // Handle request response (approve/reject)
   const handleRequestResponse = async (requestId: string, action: 'approve' | 'reject') => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
 
       const response = await api.post(
         '/api/premium/respond',
@@ -235,7 +236,7 @@ export default function OtherUserProfile() {
   // Load profile data
   const loadProfile = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       checkPremiumExistence();
       // Check if viewing own profile
       if (token) {
@@ -289,7 +290,7 @@ export default function OtherUserProfile() {
   // Navigate to premium items
   const viewPremiumItems = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) {
         Alert.alert("Login Required", "Please login to view premium items");
         router.push("/(auth)/login-options");

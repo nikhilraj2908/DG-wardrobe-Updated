@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState, useMemo } from "react";
 import {
@@ -43,7 +44,7 @@ export default function AllWardrobesScreen() {
   const fetchWardrobes = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       const res = await api.get("/api/wardrobe/list", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -102,7 +103,7 @@ export default function AllWardrobesScreen() {
 
   const deleteSingleWardrobe = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       await api.delete(`/api/wardrobe/${selectedIds[0]}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -115,7 +116,7 @@ export default function AllWardrobesScreen() {
 
   const deleteMultipleWardrobes = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       await api.delete("/api/wardrobe/bulk-delete", {
         headers: { Authorization: `Bearer ${token}` },
         data: { wardrobeIds: selectedIds },

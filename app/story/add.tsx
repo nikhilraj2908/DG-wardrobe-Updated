@@ -1,5 +1,6 @@
 import ImagePicker from 'react-native-image-crop-picker';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import axios from "axios";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
@@ -171,7 +172,7 @@ export default function AddStory() {
     try {
       setUploading(true);
 
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (!token) {
         Alert.alert("Authentication Required", "Please login again");
         router.replace("/(auth)/login-options");

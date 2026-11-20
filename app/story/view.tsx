@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -68,7 +69,7 @@ export default function StoryView() {
 useEffect(() => {
   const load = async () => {
     // Decode token to get user ID
-    const token = await AsyncStorage.getItem("token");
+    const token = await storage.getItem("token");
     if (token) {
       try {
         // Split the token and decode the payload

@@ -2,6 +2,7 @@
 import WardrobeHeader from "@/components/WardrobeHeader";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "@/utils/storage";
 import { router, useLocalSearchParams } from "expo-router";
 
 import AppBackground from "@/components/AppBackground";
@@ -154,7 +155,7 @@ export default function ItemDetails() {
 
     const fetchLikeStatus = async () => {
         try {
-            const token = await AsyncStorage.getItem("token");
+            const token = await storage.getItem("token");
             if (!token) return;
 
             const res = await api.get(
@@ -208,7 +209,7 @@ export default function ItemDetails() {
         if (!item?.user?._id) return;
 
         try {
-            const token = await AsyncStorage.getItem("token");
+            const token = await storage.getItem("token");
 
             if (token) {
                 const meRes = await api.get("/api/user/me", {
@@ -216,7 +217,7 @@ export default function ItemDetails() {
                 });
 
                 if (meRes.data?._id === item.user._id) {
-                    router.push("/profile");
+                    router.push("/(tabs)/profile" as any);
                     return;
                 }
             }

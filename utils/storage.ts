@@ -15,6 +15,15 @@ export const storage = {
       // Native: Try SecureStore first
       const val = await SecureStore.getItemAsync(key);
       if (val !== null && val !== undefined) {
+        // Sync to AsyncStorage so legacy direct AsyncStorage callers don't fail
+        try {
+          const asyncVal = await AsyncStorage.getItem(key);
+          if (asyncVal !== val) {
+            await AsyncStorage.setItem(key, val);
+          }
+        } catch {
+          // ignore
+        }
         return val;
       }
 
@@ -50,6 +59,13 @@ export const storage = {
     } catch {
       // Fallback
       await AsyncStorage.setItem(key, value);
+    }
+
+    // Always keep AsyncStorage in sync on native as well
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch {
+      // ignore
     }
   },
 
