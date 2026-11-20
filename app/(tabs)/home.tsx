@@ -57,6 +57,7 @@ export default function HomeScreen() {
   const colors = theme.colors;
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -108,6 +109,7 @@ export default function HomeScreen() {
       });
 
       setCurrentUserId(res.data._id);
+      setCurrentUser(res.data);
     } catch (err) {
       console.error("User me error:", err);
     }
@@ -188,6 +190,7 @@ export default function HomeScreen() {
         <ItemPostCard
           item={item}
           currentUserId={currentUserId || undefined}
+          currentUser={currentUser}
           key={`item-${item._id}`}
           onDelete={(deletedId: string) => {
             setFeed(prev => prev.filter(i => i._id !== deletedId));

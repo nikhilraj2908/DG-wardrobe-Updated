@@ -46,9 +46,10 @@ interface ItemPostCardProps {
   item: any;
   onDelete?: (id: string) => void;
   currentUserId?: string;
+  currentUser?: any;
 }
 
-export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPostCardProps) {
+export default function ItemPostCard({ item, onDelete, currentUserId, currentUser }: ItemPostCardProps) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const colors = theme.colors;
@@ -61,6 +62,8 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
 
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState<number>(item.likes || 0);
+  const [likers, setLikers] = useState<any[]>([]);
+  const [loggedInUser, setLoggedInUser] = useState<any>(currentUser || null);
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<CommentType[]>([]);
   const [showComments, setShowComments] = useState(false);
@@ -114,6 +117,24 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
     fetchComments();
   }, [item._id]);
 
+  // Fetch current user if not provided
+  useEffect(() => {
+    if (currentUser) {
+      setLoggedInUser(currentUser);
+    } else {
+      (async () => {
+        try {
+          const token = await storage.getItem("token");
+          if (!token) return;
+          const res = await api.get("/api/user/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setLoggedInUser(res.data);
+        } catch {}
+      })();
+    }
+  }, [currentUser]);
+
   // Reset justFollowed when owner changes
   useEffect(() => {
     setJustFollowed(false);
@@ -136,6 +157,9 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
     try {
       const res = await api.get(`/api/like/item/${item._id}/count`);
       setLikeCount(res.data.count || 0);
+      if (Array.isArray(res.data.likers)) {
+        setLikers(res.data.likers);
+      }
     } catch (error) {
       console.error("Error fetching like count:", error);
     }
@@ -308,6 +332,8 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
   };
 
   const avatarUrl = getUserAvatarUrl();
+  const loggedInUserAvatar = loggedInUser?.photo ? resolveImageUrl(loggedInUser.photo) : null;
+  const loggedInUserInitial = loggedInUser?.username?.[0]?.toUpperCase() || "U";
 
   const renderComment = ({ item: comment }: { item: CommentType }) => {
     const userObj = typeof comment.user === "string" ? null : comment.user;
@@ -542,54 +568,108 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
           </TouchableOpacity>
         </View>
 
-        {/* Likes */}
-        <Text style={[styles.likes, { color: colors.textPrimary }]}>{likeCount} likes</Text>
-
-        {/* Item Details */}
-        <View style={styles.itemDetails}>
-          <Text style={[styles.itemName, { color: colors.textPrimary }]}>{item.name}</Text>
-          {item.description && (
-            <Text style={[styles.itemDescription, { color: colors.textSecondary }]}>
-              {item.description}
+        {/* Compact Stats Row: Overlapping liker avatars + Likes count & Comments count */}
+        <View style={styles.statsRow}>
+          <View style={styles.likesCluster}>
+            {likeCount > 0 && (
+              <View style={styles.overlappingAvatars}>
+                {(likers.length > 0
+                  ? likers.slice(0, 3)
+                  : [
+                      {
+                        _id: "default-liker",
+                        photo: loggedInUserAvatar,
+                        username: loggedInUserInitial,
+                      },
+                    ]
+                ).map((liker: any, idx: number) => {
+                  const photoUrl = liker?.photo ? resolveImageUrl(liker.photo) : null;
+                  return (
+                    <View
+                      key={liker?._id || idx}
+                      style={[
+                        styles.miniAvatarWrapper,
+                        { marginLeft: idx === 0 ? 0 : -8, zIndex: 10 - idx },
+                      ]}
+                    >
+                      {photoUrl ? (
+                        <Image source={{ uri: photoUrl }} style={styles.miniAvatar} />
+                      ) : (
+                        <View style={[styles.miniAvatarPlaceholder, { backgroundColor: colors.primary }]}>
+                          <Text style={styles.miniAvatarInitial}>
+                            {liker?.username?.[0]?.toUpperCase() || "U"}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            <Text style={[styles.likesCountText, { color: colors.textPrimary }]}>
+              {likeCount} {likeCount === 1 ? "like" : "likes"}
             </Text>
-          )}
+          </View>
+
+          {/* Right: Comments count (clickable to open comments modal) */}
+          <TouchableOpacity onPress={handleOpenComments} activeOpacity={0.7}>
+            <Text style={[styles.commentsCountText, { color: colors.textSecondary }]}>
+              {commentCount} {commentCount === 1 ? "comment" : "comments"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* View Comments */}
-        {commentCount > 0 && (
-          <TouchableOpacity onPress={handleOpenComments} style={styles.viewComments}>
-            <Text style={[styles.viewCommentsText, { color: colors.textSecondary }]}>
-              View all {commentCount} comments
+        {/* Item Details */}
+        {(item.name || item.description) ? (
+          <View style={styles.itemDetails}>
+            <Text style={[styles.itemName, { color: colors.textPrimary }]}>
+              {item.name}
+              {item.description ? (
+                <Text style={[styles.itemDescription, { color: colors.textSecondary }]}>
+                  {"  "}{item.description}
+                </Text>
+              ) : null}
             </Text>
-          </TouchableOpacity>
-        )}
+          </View>
+        ) : null}
 
-        {/* Add Comment Input */}
-        <View style={[styles.commentInputContainer, { borderTopColor: colors.border }]}>
-          <TextInput
-            style={[styles.commentInput, { color: colors.textPrimary }]}
-            placeholder="Add a comment..."
-            placeholderTextColor={colors.textMuted}
-            value={commentText}
-            onChangeText={setCommentText}
-            onSubmitEditing={handleComment}
-            editable={!loading}
-          />
-          <TouchableOpacity
-            onPress={handleComment}
-            disabled={!commentText.trim() || loading}
-            style={styles.sendButton}
-          >
-            <Text
-              style={[
-                styles.sendButtonText,
-                !commentText.trim() && styles.sendButtonDisabled,
-                { color: commentText.trim() ? colors.primary : colors.textMuted },
-              ]}
+        {/* Pill-style Comment Input Bar */}
+        <View style={styles.commentPillRow}>
+          <View style={[styles.userCommentAvatarWrapper, { borderColor: colors.border }]}>
+            {loggedInUserAvatar ? (
+              <Image source={{ uri: loggedInUserAvatar }} style={styles.userCommentAvatar} />
+            ) : (
+              <View style={[styles.userCommentAvatarPlaceholder, { backgroundColor: colors.card }]}>
+                <Text style={[styles.userCommentAvatarInitial, { color: colors.primary }]}>
+                  {loggedInUserInitial}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={[styles.commentPill, { backgroundColor: colors.surface === "#FFFFFF" ? "#F8FAFC" : colors.card, borderColor: colors.border }]}>
+            <TextInput
+              style={[styles.commentPillInput, { color: colors.textPrimary }]}
+              placeholder="Add a comment..."
+              placeholderTextColor={colors.textMuted}
+              value={commentText}
+              onChangeText={setCommentText}
+              onSubmitEditing={handleComment}
+              editable={!loading}
+            />
+            <TouchableOpacity
+              onPress={handleComment}
+              disabled={!commentText.trim() || loading}
+              style={styles.sendPlaneBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              Post
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name="paper-plane-outline"
+                size={20}
+                color={commentText.trim() ? "#F59E0B" : "#F59E0B"}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -856,9 +936,8 @@ const createStyles = (colors: any) =>
       flexDirection: "row",
       justifyContent: "space-between",
       paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingTop: 8,
+      paddingBottom: 4,
     },
     leftActions: {
       flexDirection: "row",
@@ -870,58 +949,117 @@ const createStyles = (colors: any) =>
       justifyContent: "center",
       alignItems: "center",
     },
-    likes: {
+    statsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       paddingHorizontal: 14,
-      paddingTop: 8,
+      paddingTop: 4,
+      paddingBottom: 4,
+    },
+    likesCluster: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    overlappingAvatars: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginRight: 8,
+    },
+    miniAvatarWrapper: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1.5,
+      borderColor: colors.surface || "#FFFFFF",
+      overflow: "hidden",
+      backgroundColor: "#E2E8F0",
+    },
+    miniAvatar: {
+      width: "100%",
+      height: "100%",
+    },
+    miniAvatarPlaceholder: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    miniAvatarInitial: {
+      color: "#FFFFFF",
+      fontSize: 10,
       fontWeight: "700",
-      fontSize: 14,
+    },
+    likesCountText: {
+      fontSize: 13.5,
+      fontWeight: "700",
+    },
+    commentsCountText: {
+      fontSize: 13,
+      fontWeight: "500",
     },
     itemDetails: {
       paddingHorizontal: 14,
-      paddingTop: 1,
-      paddingBottom: 1,
+      paddingVertical: 2,
     },
     itemName: {
-      fontSize: 15,
-      fontWeight: "600",
-      marginBottom: 4,
+      fontSize: 13.5,
+      fontWeight: "700",
     },
     itemDescription: {
-      fontSize: 14,
-      lineHeight: 18,
+      fontSize: 13,
+      fontWeight: "400",
+      lineHeight: 17,
     },
-    viewComments: {
-      paddingHorizontal: 14,
-      paddingVertical: 4,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      marginTop: 4,
-    },
-    viewCommentsText: {
-      fontSize: 14,
-    },
-    commentInputContainer: {
+    commentPillRow: {
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderTopWidth: 1,
+      paddingTop: 6,
+      paddingBottom: 10,
     },
-    commentInput: {
+    userCommentAvatarWrapper: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      borderWidth: 1,
+      overflow: "hidden",
+      marginRight: 8,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    userCommentAvatar: {
+      width: "100%",
+      height: "100%",
+    },
+    userCommentAvatarPlaceholder: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    userCommentAvatarInitial: {
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    commentPill: {
       flex: 1,
-      fontSize: 14,
-      paddingVertical: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: 22,
+      paddingHorizontal: 14,
+      height: 38,
+      borderWidth: 1,
     },
-    sendButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+    commentPillInput: {
+      flex: 1,
+      fontSize: 13.5,
+      paddingVertical: 4,
     },
-    sendButtonText: {
-      fontWeight: "600",
-      fontSize: 14,
-    },
-    sendButtonDisabled: {
-      opacity: 0.5,
+    sendPlaneBtn: {
+      paddingLeft: 6,
+      justifyContent: "center",
+      alignItems: "center",
     },
     modalContainer: {
       flex: 1,
