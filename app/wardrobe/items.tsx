@@ -368,23 +368,82 @@ export default function AllWardrobeItemsScreen() {
     return map[name.trim().toLowerCase()] || "#A855F7";
   };
 
-  const availableColors = useMemo(() => {
-    const colorSet = new Set<string>();
+  const PRESET_POPULAR_COLORS = useMemo(
+    () => [
+      "Black",
+      "White",
+      "Red",
+      "Blue",
+      "Green",
+      "Navy",
+      "Yellow",
+      "Pink",
+      "Grey",
+      "Beige",
+      "Brown",
+      "Purple",
+      "Orange",
+    ],
+    []
+  );
+
+  const colorsWithCounts = useMemo(() => {
+    const colorMap = new Map<string, number>();
     items.forEach((item) => {
       if (item.color && item.color.trim()) {
         const clean = item.color.trim();
         const formatted = clean.charAt(0).toUpperCase() + clean.slice(1);
-        colorSet.add(formatted);
+        colorMap.set(formatted, (colorMap.get(formatted) || 0) + 1);
       }
     });
-    return Array.from(colorSet).sort();
+    return Array.from(colorMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
   }, [items]);
+
+  const colorListToRender = useMemo(() => {
+    const list: { name: string; count: number }[] = [...colorsWithCounts];
+    const seen = new Set(list.map((c) => c.name.toLowerCase()));
+
+    // Check matching items for any preset popular colors
+    PRESET_POPULAR_COLORS.forEach((preset) => {
+      const pLower = preset.toLowerCase();
+      if (!seen.has(pLower)) {
+        const matchCount = items.filter((item) =>
+          (item.color || "").trim().toLowerCase().includes(pLower)
+        ).length;
+        if (matchCount > 0) {
+          list.push({ name: preset, count: matchCount });
+          seen.add(pLower);
+        }
+      }
+    });
+
+    // Add remaining popular presets so user can filter by any standard color
+    PRESET_POPULAR_COLORS.forEach((preset) => {
+      const pLower = preset.toLowerCase();
+      if (!seen.has(pLower)) {
+        list.push({ name: preset, count: 0 });
+        seen.add(pLower);
+      }
+    });
+
+    return list;
+  }, [colorsWithCounts, items, PRESET_POPULAR_COLORS]);
+
+  const availableColors = useMemo(() => {
+    return colorListToRender.filter((c) => c.count > 0).map((c) => c.name);
+  }, [colorListToRender]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       const matchCat = selectedCategory ? item.category?.name === selectedCategory : true;
+      const itemColor = (item.color || "").trim().toLowerCase();
+      const targetColor = (selectedColor || "").trim().toLowerCase();
       const matchColor = selectedColor
-        ? (item.color || "").trim().toLowerCase() === selectedColor.trim().toLowerCase()
+        ? itemColor === targetColor ||
+          itemColor.includes(targetColor) ||
+          targetColor.includes(itemColor)
         : true;
       return matchCat && matchColor;
     });
@@ -841,11 +900,119 @@ export default function AllWardrobeItemsScreen() {
             </ScrollView>
           </View>
 
+          {/* ========== COLORS SECTION ========== */}
+          <View style={styles.colorsSection}>
+            <View style={styles.colorsHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name="color-palette-outline" size={16} color={colors.primary} />
+                <Text style={styles.colorsTitle}>Colors</Text>
+              </View>
+              {selectedColor && (
+                <TouchableOpacity
+                  onPress={() => setSelectedColor(null)}
+                  style={styles.clearFilterButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.clearFilterText}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.colorsScrollView}
+              contentContainerStyle={styles.colorsContent}
+            >
+              {/* All Colors Option */}
+              <TouchableOpacity
+                onPress={() => setSelectedColor(null)}
+                style={[styles.colorSwatchChip, !selectedColor && styles.colorSwatchChipSelected]}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={[
+                    styles.colorSwatchCircle,
+                    !selectedColor && styles.colorSwatchCircleSelected,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <Ionicons
+                    name="color-palette"
+                    size={20}
+                    color={!selectedColor ? colors.primaryDark : colors.textMuted}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.colorSwatchLabel,
+                    !selectedColor && styles.colorSwatchLabelSelected,
+                  ]}
+                  numberOfLines={1}
+                >
+                  All
+                </Text>
+              </TouchableOpacity>
+
+              {/* Color Swatches */}
+              {colorListToRender.map((c) => {
+                const isSelected = selectedColor?.toLowerCase() === c.name.toLowerCase();
+                const hex = getColorHex(c.name);
+                const isWhite = c.name.toLowerCase() === "white";
+
+                return (
+                  <TouchableOpacity
+                    key={c.name}
+                    onPress={() => setSelectedColor(isSelected ? null : c.name)}
+                    style={[styles.colorSwatchChip, isSelected && styles.colorSwatchChipSelected]}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={[
+                        styles.colorSwatchCircle,
+                        isSelected && styles.colorSwatchCircleSelected,
+                        { backgroundColor: hex },
+                        isWhite && styles.whiteColorBorder,
+                      ]}
+                    >
+                      {isSelected ? (
+                        <Ionicons
+                          name="checkmark"
+                          size={18}
+                          color={isWhite ? "#111827" : "#FFFFFF"}
+                        />
+                      ) : null}
+
+                      {c.count > 0 && (
+                        <View style={[styles.colorSwatchBadge, isSelected && styles.colorSwatchBadgeSelected]}>
+                          <Text style={styles.colorSwatchBadgeText}>{c.count}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.colorSwatchLabel,
+                        isSelected && styles.colorSwatchLabelSelected,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {c.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           {/* ========== RESULTS INFO ========== */}
           <View style={styles.resultsInfo}>
             <Text style={styles.resultsText}>
-              {selectedCategory
+              {selectedCategory && selectedColor
+                ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}" • Color: ${selectedColor}`
+                : selectedCategory
                 ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}"`
+                : selectedColor
+                ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedColor}"`
                 : `${filteredItems.length} items in collection`}
               {sortBy === "colorAZ" ? " • Sorted by Color" : ""}
             </Text>
@@ -884,11 +1051,17 @@ export default function AllWardrobeItemsScreen() {
               <View style={styles.emptyContainer}>
                 <Ionicons name="shirt-outline" size={64} color={colors.textMuted} />
                 <Text style={styles.emptyTitle}>
-                  {selectedCategory ? `No items in ${selectedCategory}` : "No items found"}
+                  {selectedCategory && selectedColor
+                    ? `No ${selectedColor} items in "${selectedCategory}"`
+                    : selectedColor
+                    ? `No items with color "${selectedColor}"`
+                    : selectedCategory
+                    ? `No items in "${selectedCategory}"`
+                    : "No items found"}
                 </Text>
                 <Text style={styles.emptySubtitle}>
-                  {selectedCategory
-                    ? "Try selecting a different category"
+                  {selectedCategory || selectedColor
+                    ? "Try selecting a different color or category"
                     : "Start by adding items to your wardrobe"}
                 </Text>
               </View>
@@ -1499,6 +1672,95 @@ const createStyles = (colors: any) =>
     categoryCountBadgeSelected: {
       backgroundColor: "#FFFFFF",
       borderColor: colors.primary,
+    },
+    colorsSection: {
+      paddingTop: 10,
+      paddingBottom: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    colorsHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      marginBottom: 8,
+    },
+    colorsTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    colorsScrollView: {
+      paddingLeft: 16,
+      overflow: "visible",
+    },
+    colorsContent: {
+      paddingRight: 16,
+      gap: 12,
+    },
+    colorSwatchChip: {
+      alignItems: "center",
+      width: 52,
+      overflow: "visible",
+    },
+    colorSwatchChipSelected: {
+      transform: [{ scale: 1.05 }],
+    },
+    colorSwatchCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 4,
+      position: "relative",
+      borderWidth: 1.5,
+      borderColor: colors.border,
+    },
+    colorSwatchCircleSelected: {
+      borderColor: colors.primaryDark,
+      borderWidth: 2.5,
+      shadowColor: colors.primaryDark,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.35,
+      shadowRadius: 5,
+      elevation: 5,
+    },
+    whiteColorBorder: {
+      borderColor: "#D1D5DB",
+    },
+    colorSwatchBadge: {
+      position: "absolute",
+      top: -3,
+      right: -3,
+      backgroundColor: colors.primary,
+      borderRadius: 9,
+      minWidth: 18,
+      height: 18,
+      paddingHorizontal: 4,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 1.5,
+      borderColor: colors.surface,
+    },
+    colorSwatchBadgeSelected: {
+      backgroundColor: colors.primaryDark,
+    },
+    colorSwatchBadgeText: {
+      color: "#FFFFFF",
+      fontSize: 10,
+      fontWeight: "700",
+    },
+    colorSwatchLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: "600",
+      textAlign: "center",
+    },
+    colorSwatchLabelSelected: {
+      color: colors.primaryDark,
+      fontWeight: "700",
     },
     categoryCountText: {
       color: "#FFFFFF",
