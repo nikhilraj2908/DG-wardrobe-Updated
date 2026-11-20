@@ -2,7 +2,7 @@ import AppBackground from "@/components/AppBackground";
 import WardrobeHeader from "@/components/WardrobeHeader";
 import { useFollow } from "@/context/FollowContext";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { storage } from "@/utils/storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -410,23 +410,40 @@ export default function OtherUserProfile() {
             {/* STATS */}
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
+                <Ionicons
+                  name="wallet-outline"
+                  size={26}
+                  color={colors.primaryDark || "#7C3AED"}
+                  style={styles.statIcon}
+                />
                 <Text style={styles.statValue}>₹{publishedWorth + premiumWorth}</Text>
                 <Text style={styles.statLabel}>Collection Worth</Text>
               </View>
 
               <TouchableOpacity
-                style={{ flex: 1 }}
+                style={styles.statBox}
+                activeOpacity={0.7}
                 onPress={() =>
                   router.push(`/profile/followers?userId=${userId}&tab=followers`)
                 }
               >
-                <View style={styles.statBox}>
-                  <Text style={styles.statValue}>{followersCount}</Text>
-                  <Text style={styles.statLabel}>Followers</Text>
-                </View>
+                <Ionicons
+                  name="people-outline"
+                  size={26}
+                  color={colors.primaryDark || "#7C3AED"}
+                  style={styles.statIcon}
+                />
+                <Text style={styles.statValue}>{followersCount}</Text>
+                <Text style={styles.statLabel}>Followers</Text>
               </TouchableOpacity>
 
               <View style={styles.statBox}>
+                <MaterialCommunityIcons
+                  name="hanger"
+                  size={26}
+                  color={colors.primaryDark || "#7C3AED"}
+                  style={styles.statIcon}
+                />
                 <Text style={styles.statValue}>{wardrobes.length}</Text>
                 <Text style={styles.statLabel}>Wardrobes</Text>
               </View>
@@ -732,22 +749,40 @@ const createStyles = (colors: any) =>
     statsRow: {
       flexDirection: "row",
       justifyContent: "space-between",
+      gap: 10,
       marginBottom: 24,
+      marginTop: 12,
     },
     statBox: {
-      alignItems: "center",
       flex: 1,
-      paddingHorizontal: 8,
+      backgroundColor: colors.surface || "#FAF5FF",
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: colors.border || "#E9D5FF",
+      paddingVertical: 14,
+      paddingHorizontal: 6,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#7C3AED",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    statIcon: {
+      marginBottom: 6,
     },
     statValue: {
-      fontWeight: "700",
+      fontWeight: "800",
       fontSize: 18,
+      marginBottom: 2,
       color: colors.textPrimary,
     },
     statLabel: {
       fontSize: 12,
-      color: colors.textMuted,
-      marginTop: 4,
+      color: colors.textSecondary,
+      fontWeight: "500",
+      textAlign: "center",
     },
     sectionHeader: {
       marginBottom: 12,

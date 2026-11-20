@@ -2,7 +2,7 @@ import AppBackground from "@/components/AppBackground";
 import { useFollow } from "@/context/FollowContext";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { promptShareToStory } from "@/utils/shareToStory";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { storage } from "@/utils/storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -740,17 +740,38 @@ useEffect(() => {
 
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
+              <Ionicons
+                name="wallet-outline"
+                size={26}
+                color={theme.colors.primaryDark || "#7C3AED"}
+                style={styles.statIcon}
+              />
               <Text style={styles.statValue}>{userData?.collectionWorth || "₹0"}</Text>
               <Text style={styles.statLabel}>Collection Worth</Text>
             </View>
+
             <TouchableOpacity
               style={styles.statBox}
+              activeOpacity={0.7}
               onPress={() => router.push(`/profile/followers?userId=${user?._id}&tab=followers`)}
             >
+              <Ionicons
+                name="people-outline"
+                size={26}
+                color={theme.colors.primaryDark || "#7C3AED"}
+                style={styles.statIcon}
+              />
               <Text style={styles.statValue}>{followersCount}</Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
+
             <View style={styles.statBox}>
+              <MaterialCommunityIcons
+                name="hanger"
+                size={26}
+                color={theme.colors.primaryDark || "#7C3AED"}
+                style={styles.statIcon}
+              />
               <Text style={styles.statValue}>{userData?.wardrobeCount || 0}</Text>
               <Text style={styles.statLabel}>Wardrobes</Text>
             </View>
@@ -1327,24 +1348,40 @@ const createStyles = (theme: any) =>
     statsRow: {
       flexDirection: "row",
       justifyContent: "space-between",
+      gap: 10,
       marginBottom: 20,
-      marginTop: 10,
-      paddingHorizontal: 10,
+      marginTop: 12,
     },
     statBox: {
-      alignItems: "center",
       flex: 1,
+      backgroundColor: theme.colors.surface || "#FAF5FF",
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: theme.colors.border || "#E9D5FF",
+      paddingVertical: 14,
+      paddingHorizontal: 6,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#7C3AED",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    statIcon: {
+      marginBottom: 6,
     },
     statValue: {
-      fontWeight: "700",
+      fontWeight: "800",
       fontSize: 18,
-      marginBottom: 4,
+      marginBottom: 2,
       color: theme.colors.textPrimary,
     },
     statLabel: {
       fontSize: 12,
       color: theme.colors.textSecondary,
       fontWeight: "500",
+      textAlign: "center",
     },
     tabRow: {
       flexDirection: "row",
