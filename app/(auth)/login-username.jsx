@@ -45,7 +45,7 @@ export default function LoginWithUsername() {
 
       // Now navigate to profile
       Alert.alert("Success", "Login successful!");
-      router.replace('/profile');
+      router.replace('/(tabs)/profile');
 
     } catch (err) {
       setLoading(false);
@@ -191,6 +191,7 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     marginBottom: 15,
     fontSize: 15,
+    color: "#111827",
   },
 
   passwordWrapper: {
@@ -208,6 +209,7 @@ const styles = StyleSheet.create({
   passwordInput: {
     flex: 1,
     fontSize: 15,
+    color: "#111827",
   },
 
   btnWrapper: {

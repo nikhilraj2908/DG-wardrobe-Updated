@@ -97,6 +97,7 @@ export default function ResetPasswordScreen() {
         <TextInput
           style={styles.input}
           placeholder="New Password"
+          placeholderTextColor="#9CA3AF"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -105,6 +106,7 @@ export default function ResetPasswordScreen() {
         <TextInput
           style={styles.input}
           placeholder="Confirm Password"
+          placeholderTextColor="#9CA3AF"
           secureTextEntry
           value={confirm}
           onChangeText={setConfirm}
@@ -152,6 +154,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#eee",
     marginBottom: 15,
+    color: "#111827",
   },
   btn: {
     paddingVertical: 15,

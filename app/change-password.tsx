@@ -90,6 +90,7 @@ if (isGoogleUser) {
           <View style={styles.inputWrapper}>
             <TextInput
               placeholder="Current Password"
+              placeholderTextColor="#9CA3AF"
               secureTextEntry={!showCurrent}
               style={styles.input}
               value={current}
@@ -108,6 +109,7 @@ if (isGoogleUser) {
           <View style={styles.inputWrapper}>
             <TextInput
               placeholder="New Password"
+              placeholderTextColor="#9CA3AF"
               secureTextEntry={!showNew}
               style={styles.input}
               value={newPass}
@@ -126,6 +128,7 @@ if (isGoogleUser) {
           <View style={styles.inputWrapper}>
             <TextInput
               placeholder="Confirm New Password"
+              placeholderTextColor="#9CA3AF"
               secureTextEntry={!showConfirm}
               style={styles.input}
               value={confirm}
@@ -170,6 +173,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 16,
+    color: "#111827",
   },
 
   button: {
