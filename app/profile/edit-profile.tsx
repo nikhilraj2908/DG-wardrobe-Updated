@@ -157,8 +157,9 @@ export default function EditProfileScreen() {
 
   const handleSaveProfile = async () => {
     try {
-      if (!name.trim()) {
-        Alert.alert("Validation Error", "Name is required");
+      const targetUsername = (username || name || "").trim();
+      if (!targetUsername && !userProfile?.username) {
+        Alert.alert("Validation Error", "Username is required");
         return;
       }
 
@@ -172,9 +173,21 @@ export default function EditProfileScreen() {
       }
 
       const formData = new FormData();
-      formData.append('username', name.trim());
+
+      // Only send username if it was changed or is being newly set
+      const currentUsername = (userProfile?.username || "").trim();
+      if (targetUsername && targetUsername !== currentUsername) {
+        formData.append('username', targetUsername);
+      }
+
+      // Only send mobile if it was changed
+      const currentMobile = (userProfile?.mobile || "").trim();
+      const targetMobile = mobile.trim();
+      if (targetMobile && targetMobile !== currentMobile) {
+        formData.append('mobile', targetMobile);
+      }
+
       if (bio.trim()) formData.append('bio', bio.trim());
-      if (mobile.trim()) formData.append('mobile', mobile.trim());
       if (gender.trim()) formData.append('gender', gender.trim());
       if (dob.trim()) formData.append('dob', dob.trim());
 
@@ -215,9 +228,13 @@ export default function EditProfileScreen() {
     } catch (error: any) {
       console.error("Error updating profile:", error);
       let errorMessage = "Failed to update profile. Please try again.";
-      if (error.message) errorMessage = error.message;
-      else if (error.response?.data?.message) errorMessage = error.response.data.message;
-      else if (error.response?.data?.error) errorMessage = error.response.data.error;
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       Alert.alert("Error", errorMessage);
     } finally {
       setSaving(false);
@@ -292,24 +309,18 @@ export default function EditProfileScreen() {
             </Text>
           </View>
 
-          {/* Name */}
-          <Text style={styles.label}>Name</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Enter your name"
-            placeholderTextColor={colors.textMuted}
-          />
-
           {/* Username */}
           <Text style={styles.label}>Username</Text>
           <TextInput
             style={styles.input}
             value={username}
-            onChangeText={setUsername}
+            onChangeText={(text) => {
+              setUsername(text);
+              setName(text);
+            }}
             placeholder="Enter username"
             placeholderTextColor={colors.textMuted}
+            autoCapitalize="none"
           />
 
           {/* Email (Read-only) */}
