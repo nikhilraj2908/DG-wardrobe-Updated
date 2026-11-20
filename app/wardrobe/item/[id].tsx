@@ -416,7 +416,10 @@ export default function ItemDetails() {
                                     onPress={handleSharePostToStory}
                                     style={styles.actionBtn}
                                 >
-                                    <Ionicons name="paper-plane-outline" size={20} color={colors.textMuted} />
+                                    <Image
+                                        source={require("../../../assets/icons/share.png")}
+                                        style={styles.actionImageIcon}
+                                    />
                                     <Text style={{ color: colors.textPrimary }}>Share</Text>
                                 </TouchableOpacity>
                             </View>

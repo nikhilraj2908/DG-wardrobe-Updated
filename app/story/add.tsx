@@ -240,7 +240,7 @@ export default function AddStory() {
               <Image
                 source={{ uri: selectedMedia.uri }}
                 style={styles.previewImage}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             ) : (
               <View style={styles.placeholderContainer}>

@@ -268,7 +268,11 @@ useEffect(() => {
           onPressOut={() => setPaused(false)}
         >
           {story.mediaType === "image" ? (
-            <Image source={{ uri: mediaUrl }} style={styles.media} />
+            <Image
+              source={{ uri: mediaUrl }}
+              style={styles.media}
+              resizeMode="contain"
+            />
           ) : (
             <StoryVideo uri={mediaUrl} paused={paused} style={styles.media} />
           )}
@@ -416,8 +420,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   username: { color: "#fff", fontWeight: "600", fontSize: 16 },
-  touch: { flex: 1 },
-  media: { width: "100%", height: "100%" },
+  touch: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" },
+  media: { width: "100%", height: "100%", resizeMode: "contain" },
   viewsContainer: {
     position: "absolute",
     bottom: 40,

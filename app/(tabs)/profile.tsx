@@ -1008,7 +1008,10 @@ useEffect(() => {
                             }}
                             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                           >
-                            <Ionicons name="paper-plane-outline" size={17} color="#7C3AED" />
+                            <Image
+                              source={require("../../assets/icons/share.png")}
+                              style={{ width: 17, height: 17, resizeMode: "contain", tintColor: "#7C3AED" }}
+                            />
                           </TouchableOpacity>
 
                           {/* Edit / View in Canvas */}

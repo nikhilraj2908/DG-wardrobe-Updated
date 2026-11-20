@@ -638,7 +638,10 @@ export default function MatchPairScreen() {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   style={[styles.storyShareBtn, { backgroundColor: colors.primary }]}
                 >
-                  <Ionicons name="paper-plane-outline" size={18} color="#FFFFFF" />
+                  <Image
+                    source={require("../../assets/icons/share.png")}
+                    style={{ width: 17, height: 17, resizeMode: "contain", tintColor: "#FFFFFF" }}
+                  />
                 </TouchableOpacity>
               )}
 

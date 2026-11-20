@@ -523,7 +523,10 @@ export default function ItemPostCard({ item, onDelete, currentUserId }: ItemPost
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleSharePostToStory} style={styles.actionIcon}>
-              <Ionicons name="paper-plane-outline" size={20} color={colors.textMuted} />
+              <Image
+                source={require("../assets/icons/share.png")}
+                style={styles.actionImageIcon}
+              />
             </TouchableOpacity>
           </View>
 
