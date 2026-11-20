@@ -12,6 +12,7 @@ import {
     Alert,
     FlatList,
     Image,
+    KeyboardAvoidingView,
     Modal,
     Platform,
     ScrollView,
@@ -831,7 +832,17 @@ export default function AddWardrobe() {
 
     return (
         <AppBackground>
-            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+            >
+                <ScrollView
+                    style={styles.container}
+                    contentContainerStyle={{ paddingBottom: 140 }}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         <TouchableOpacity onPress={() => {
@@ -1297,8 +1308,9 @@ export default function AddWardrobe() {
                     </View>
                 </Modal>
             </ScrollView>
-        </AppBackground>
-    );
+        </KeyboardAvoidingView>
+    </AppBackground>
+);
 }
 
 const createStyles = (colors: any) =>

@@ -153,9 +153,21 @@ export default function AllWardrobeItemsScreen() {
   const colors = theme.colors;
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  type SortOption =
+    | "dateNewest"
+    | "dateOldest"
+    | "colorAZ"
+    | "priceHigh"
+    | "priceLow"
+    | "nameAZ"
+    | "publicFirst"
+    | "privateFirst"
+    | "premiumFirst";
+
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [sortModalVisible, setSortModalVisible] = useState(false);
-  const [sortBy, setSortBy] = useState<"dateNewest" | "dateOldest" | "priceHigh" | "priceLow" | "nameAZ" | "publicFirst" | "privateFirst" | "premiumFirst">("dateNewest");
+  const [sortBy, setSortBy] = useState<SortOption>("dateNewest");
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [isGridView, setIsGridView] = useState(true);
   const [loading, setLoading] = useState(true);
   const { userId } = useLocalSearchParams();
@@ -335,60 +347,108 @@ export default function AllWardrobeItemsScreen() {
       .sort((a, b) => b.count - a.count);
   }, [items]);
 
-  const filteredItems = selectedCategory
-    ? items.filter((item) => item.category?.name === selectedCategory)
-    : items;
+  const getColorHex = (name?: string): string => {
+    if (!name) return "#A855F7";
+    const map: Record<string, string> = {
+      black: "#111827",
+      white: "#FFFFFF",
+      navy: "#1E3A8A",
+      blue: "#2563EB",
+      grey: "#6B7280",
+      gray: "#6B7280",
+      beige: "#D4B996",
+      brown: "#78350F",
+      red: "#DC2626",
+      pink: "#EC4899",
+      green: "#059669",
+      yellow: "#F59E0B",
+      purple: "#7C3AED",
+      orange: "#EA580C",
+    };
+    return map[name.trim().toLowerCase()] || "#A855F7";
+  };
+
+  const availableColors = useMemo(() => {
+    const colorSet = new Set<string>();
+    items.forEach((item) => {
+      if (item.color && item.color.trim()) {
+        const clean = item.color.trim();
+        const formatted = clean.charAt(0).toUpperCase() + clean.slice(1);
+        colorSet.add(formatted);
+      }
+    });
+    return Array.from(colorSet).sort();
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const matchCat = selectedCategory ? item.category?.name === selectedCategory : true;
+      const matchColor = selectedColor
+        ? (item.color || "").trim().toLowerCase() === selectedColor.trim().toLowerCase()
+        : true;
+      return matchCat && matchColor;
+    });
+  }, [items, selectedCategory, selectedColor]);
 
   const sortedItems = useMemo(() => {
-  const items = [...filteredItems];
-  switch (sortBy) {
-    case "dateNewest":
-      return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    case "dateOldest":
-      return items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    case "priceHigh":
-      return items.sort((a, b) => b.price - a.price);
-    case "priceLow":
-      return items.sort((a, b) => a.price - b.price);
-    case "nameAZ":
-      return items.sort((a, b) => (a.category?.name || "").localeCompare(b.category?.name || ""));
+    const list = [...filteredItems];
+    switch (sortBy) {
+      case "colorAZ":
+        return list.sort((a, b) => {
+          const cA = (a.color || "").trim().toLowerCase();
+          const cB = (b.color || "").trim().toLowerCase();
+          if (!cA && !cB) return 0;
+          if (!cA) return 1;
+          if (!cB) return -1;
+          return cA.localeCompare(cB);
+        });
+      case "dateNewest":
+        return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      case "dateOldest":
+        return list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      case "priceHigh":
+        return list.sort((a, b) => b.price - a.price);
+      case "priceLow":
+        return list.sort((a, b) => a.price - b.price);
+      case "nameAZ":
+        return list.sort((a, b) => (a.category?.name || "").localeCompare(b.category?.name || ""));
 
-    // ✅ Updated Public First: normal public (2) → premium (1) → private (0)
-    case "publicFirst":
-      return items.sort((a, b) => {
-        const getRank = (item: WardrobeItem) => {
-          if (item.visibility === "public") {
-            // Premium items have lower rank than normal public
-            return item.accessLevel === "premium" ? 1 : 2;
-          }
-          return 0; // private
-        };
-        return getRank(b) - getRank(a);
-      });
+      // ✅ Updated Public First: normal public (2) → premium (1) → private (0)
+      case "publicFirst":
+        return list.sort((a, b) => {
+          const getRank = (item: WardrobeItem) => {
+            if (item.visibility === "public") {
+              // Premium items have lower rank than normal public
+              return item.accessLevel === "premium" ? 1 : 2;
+            }
+            return 0; // private
+          };
+          return getRank(b) - getRank(a);
+        });
 
-    // ✅ Updated Premium First: premium (2) → normal public (1) → private (0)
-    case "premiumFirst":
-      return items.sort((a, b) => {
-        const getRank = (item: WardrobeItem) => {
-          if (item.accessLevel === "premium") return 2;
-          if (item.visibility === "public") return 1; // normal public
-          return 0; // private
-        };
-        return getRank(b) - getRank(a);
-      });
+      // ✅ Updated Premium First: premium (2) → normal public (1) → private (0)
+      case "premiumFirst":
+        return list.sort((a, b) => {
+          const getRank = (item: WardrobeItem) => {
+            if (item.accessLevel === "premium") return 2;
+            if (item.visibility === "public") return 1; // normal public
+            return 0; // private
+          };
+          return getRank(b) - getRank(a);
+        });
 
-    // Private First stays as is (private first, others in original order)
-    case "privateFirst":
-      return items.sort((a, b) => {
-        const aPrivate = a.visibility === "private" ? 1 : 0;
-        const bPrivate = b.visibility === "private" ? 1 : 0;
-        return bPrivate - aPrivate;
-      });
+      // Private First stays as is (private first, others in original order)
+      case "privateFirst":
+        return list.sort((a, b) => {
+          const aPrivate = a.visibility === "private" ? 1 : 0;
+          const bPrivate = b.visibility === "private" ? 1 : 0;
+          return bPrivate - aPrivate;
+        });
 
-    default:
-      return items;
-  }
-}, [filteredItems, sortBy]);
+      default:
+        return list;
+    }
+  }, [filteredItems, sortBy]);
   const DEFAULT_IMAGE = "https://ui-avatars.com/api/?name=Item&background=random";
 
   const getBrandLabel = (item: WardrobeItem) => {
@@ -538,9 +598,25 @@ export default function AllWardrobeItemsScreen() {
             <Text style={styles.gridItemPrice}>₹{item.price}</Text>
           </View>
 
-          <Text style={styles.gridItemBrand} numberOfLines={1}>
-            {getBrandLabel(item)}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+            <Text style={[styles.gridItemBrand, { flex: 1, marginRight: 6 }]} numberOfLines={1}>
+              {getBrandLabel(item)}
+            </Text>
+            {item.color ? (
+              <View style={styles.itemColorTag}>
+                <View
+                  style={[
+                    styles.itemColorTagDot,
+                    { backgroundColor: getColorHex(item.color) },
+                    item.color.toLowerCase() === "white" && styles.colorDotBorder,
+                  ]}
+                />
+                <Text style={styles.itemColorTagText} numberOfLines={1}>
+                  {item.color}
+                </Text>
+              </View>
+            ) : null}
+          </View>
 
           {item.description && (
             <Text style={styles.gridItemDescription} numberOfLines={2}>
@@ -594,6 +670,20 @@ export default function AllWardrobeItemsScreen() {
             <Text style={styles.listItemBrand} numberOfLines={1}>
               {getBrandLabel(item)}
             </Text>
+            {item.color ? (
+              <View style={styles.itemColorTag}>
+                <View
+                  style={[
+                    styles.itemColorTagDot,
+                    { backgroundColor: getColorHex(item.color) },
+                    item.color.toLowerCase() === "white" && styles.colorDotBorder,
+                  ]}
+                />
+                <Text style={styles.itemColorTagText} numberOfLines={1}>
+                  {item.color}
+                </Text>
+              </View>
+            ) : null}
             {renderVisibilityBadgeInline(item)}
           </View>
 
@@ -650,9 +740,29 @@ export default function AllWardrobeItemsScreen() {
                   color={isGridView ? colors.primary : colors.textMuted}
                 />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sortButton} onPress={() => setSortModalVisible(true)}>
-                <Ionicons name="filter-outline" size={18} color={colors.primary} />
-                <Text style={styles.sortButtonText}>Sort</Text>
+              <TouchableOpacity
+                style={[
+                  styles.sortButton,
+                  (sortBy !== "dateNewest" || selectedColor !== null) && styles.sortButtonActive,
+                ]}
+                onPress={() => setSortModalVisible(true)}
+              >
+                <Ionicons
+                  name={sortBy !== "dateNewest" || selectedColor !== null ? "filter" : "filter-outline"}
+                  size={16}
+                  color={sortBy !== "dateNewest" || selectedColor !== null ? "#FFFFFF" : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.sortButtonText,
+                    (sortBy !== "dateNewest" || selectedColor !== null) && styles.sortButtonTextActive,
+                  ]}
+                >
+                  Sort
+                </Text>
+                {(sortBy !== "dateNewest" || selectedColor !== null) && (
+                  <View style={styles.sortActiveDot} />
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -736,8 +846,26 @@ export default function AllWardrobeItemsScreen() {
             <Text style={styles.resultsText}>
               {selectedCategory
                 ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}"`
-                : `${items.length} items in collection`}
+                : `${filteredItems.length} items in collection`}
+              {sortBy === "colorAZ" ? " • Sorted by Color" : ""}
             </Text>
+            {selectedColor && (
+              <TouchableOpacity
+                style={styles.activeColorPill}
+                onPress={() => setSelectedColor(null)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <View
+                  style={[
+                    styles.colorFilterDot,
+                    { backgroundColor: getColorHex(selectedColor) },
+                    selectedColor.toLowerCase() === "white" && styles.colorDotBorder,
+                  ]}
+                />
+                <Text style={styles.activeColorBannerText}>Color: {selectedColor}</Text>
+                <Ionicons name="close-circle" size={14} color={colors.primaryDark} />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* ========== ITEMS LIST ========== */}
@@ -810,7 +938,7 @@ export default function AllWardrobeItemsScreen() {
             </View>
           </Modal>
 
-          {/* ========== SORT MODAL ========== */}
+          {/* ========== SORT & FILTER MODAL ========== */}
           <Modal
             animationType="slide"
             transparent
@@ -818,99 +946,345 @@ export default function AllWardrobeItemsScreen() {
             onRequestClose={() => setSortModalVisible(false)}
           >
             <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
-              <View style={[styles.modalContent, { backgroundColor: colors.surface, paddingBottom: insets.bottom + 16 }]}>
-                <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Sort By</Text>
-                  <TouchableOpacity onPress={() => setSortModalVisible(false)}>
-                    <Ionicons name="close" size={24} color={colors.textPrimary} />
-                  </TouchableOpacity>
+              <View style={[styles.modalContent, { backgroundColor: colors.surface, paddingBottom: insets.bottom + 12 }]}>
+                {/* Grab handle */}
+                <View style={styles.sheetHandle} />
+
+                {/* Header */}
+                <View style={styles.modalHeaderNew}>
+                  <View>
+                    <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Sort & Filter</Text>
+                    <Text style={styles.modalSubtitle}>Customize your wardrobe view</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    {(sortBy !== "dateNewest" || selectedColor !== null) && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSortBy("dateNewest");
+                          setSelectedColor(null);
+                        }}
+                        style={styles.resetSortBtn}
+                      >
+                        <Text style={styles.resetSortText}>Reset</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={styles.modalCloseCircle}
+                      onPress={() => setSortModalVisible(false)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close" size={18} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
-                <ScrollView>
-                  {/* Date */}
+                <ScrollView showsVerticalScrollIndicator={false} style={styles.sortModalScroll}>
+                  {/* Color Section */}
                   <View style={styles.sortSection}>
-                    <Text style={[styles.sortSectionTitle, { color: colors.textSecondary }]}>By Date</Text>
-                    <View style={styles.sortButtons}>
+                    <View style={styles.sectionTitleRow}>
+                      <Ionicons name="color-palette" size={16} color={colors.primary} />
+                      <Text style={[styles.sortSectionTitle, { color: colors.textPrimary }]}>By Color</Text>
+                    </View>
+
+                    {/* Color A to Z */}
+                    <TouchableOpacity
+                      style={[
+                        styles.sortOptionCard,
+                        sortBy === "colorAZ" && styles.sortOptionCardActive,
+                      ]}
+                      onPress={() => setSortBy(sortBy === "colorAZ" ? "dateNewest" : "colorAZ")}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.sortOptionIconBox, sortBy === "colorAZ" && styles.sortOptionIconBoxActive]}>
+                        <Ionicons
+                          name="color-filter-outline"
+                          size={18}
+                          color={sortBy === "colorAZ" ? "#FFFFFF" : colors.primary}
+                        />
+                      </View>
+                      <View style={styles.sortOptionTextWrap}>
+                        <Text style={[styles.sortOptionLabel, sortBy === "colorAZ" && styles.sortOptionLabelActive]}>
+                          Color: A to Z
+                        </Text>
+                        <Text style={styles.sortOptionSublabel}>Group clothes by color name alphabetically</Text>
+                      </View>
+                      <Ionicons
+                        name={sortBy === "colorAZ" ? "checkmark-circle" : "ellipse-outline"}
+                        size={20}
+                        color={sortBy === "colorAZ" ? colors.primary : colors.textMuted}
+                      />
+                    </TouchableOpacity>
+
+                    {/* Filter by Specific Available Color */}
+                    {availableColors.length > 0 && (
+                      <View style={{ marginTop: 8 }}>
+                        <Text style={styles.subfilterLabel}>Filter by specific color:</Text>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.colorFilterScroll}
+                        >
+                          <TouchableOpacity
+                            style={[
+                              styles.colorFilterChip,
+                              selectedColor === null && styles.colorFilterChipActive,
+                            ]}
+                            onPress={() => setSelectedColor(null)}
+                          >
+                            <Text
+                              style={[
+                                styles.colorFilterChipText,
+                                selectedColor === null && styles.colorFilterChipTextActive,
+                              ]}
+                            >
+                              All Colors
+                            </Text>
+                          </TouchableOpacity>
+
+                          {availableColors.map((cName) => {
+                            const isChipActive = selectedColor?.toLowerCase() === cName.toLowerCase();
+                            const hex = getColorHex(cName);
+                            return (
+                              <TouchableOpacity
+                                key={cName}
+                                style={[
+                                  styles.colorFilterChip,
+                                  isChipActive && styles.colorFilterChipActive,
+                                ]}
+                                onPress={() => setSelectedColor(isChipActive ? null : cName)}
+                              >
+                                <View
+                                  style={[
+                                    styles.colorFilterDot,
+                                    { backgroundColor: hex },
+                                    cName.toLowerCase() === "white" && styles.colorDotBorder,
+                                  ]}
+                                />
+                                <Text
+                                  style={[
+                                    styles.colorFilterChipText,
+                                    isChipActive && styles.colorFilterChipTextActive,
+                                  ]}
+                                >
+                                  {cName}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Date Section */}
+                  <View style={styles.sortSection}>
+                    <View style={styles.sectionTitleRow}>
+                      <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.sortSectionTitle, { color: colors.textPrimary }]}>By Date</Text>
+                    </View>
+                    <View style={styles.sortOptionsGrid}>
                       <TouchableOpacity
-                        style={[styles.sortBtn, sortBy === "dateNewest" && styles.activeSortBtn]}
-                        onPress={() => { setSortBy("dateNewest"); setSortModalVisible(false); }}
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "dateNewest" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("dateNewest")}
                       >
-                        <Text style={sortBy === "dateNewest" ? styles.activeSortText : styles.sortText}>
+                        <Ionicons
+                          name="time-outline"
+                          size={16}
+                          color={sortBy === "dateNewest" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "dateNewest" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
                           Newest First
                         </Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
-                        style={[styles.sortBtn, sortBy === "dateOldest" && styles.activeSortBtn]}
-                        onPress={() => { setSortBy("dateOldest"); setSortModalVisible(false); }}
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "dateOldest" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("dateOldest")}
                       >
-                        <Text style={sortBy === "dateOldest" ? styles.activeSortText : styles.sortText}>
+                        <Ionicons
+                          name="hourglass-outline"
+                          size={16}
+                          color={sortBy === "dateOldest" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "dateOldest" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
                           Oldest First
                         </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
 
-                  {/* Price */}
+                  {/* Price Section */}
                   <View style={styles.sortSection}>
-                    <Text style={[styles.sortSectionTitle, { color: colors.textSecondary }]}>By Price</Text>
-                    <View style={styles.sortButtons}>
+                    <View style={styles.sectionTitleRow}>
+                      <Ionicons name="cash-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.sortSectionTitle, { color: colors.textPrimary }]}>By Price</Text>
+                    </View>
+                    <View style={styles.sortOptionsGrid}>
                       <TouchableOpacity
-                        style={[styles.sortBtn, sortBy === "priceHigh" && styles.activeSortBtn]}
-                        onPress={() => { setSortBy("priceHigh"); setSortModalVisible(false); }}
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "priceHigh" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("priceHigh")}
                       >
-                        <Text style={sortBy === "priceHigh" ? styles.activeSortText : styles.sortText}>
-                          Price: High to Low
+                        <Ionicons
+                          name="arrow-down-circle-outline"
+                          size={16}
+                          color={sortBy === "priceHigh" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "priceHigh" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
+                          High to Low
                         </Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
-                        style={[styles.sortBtn, sortBy === "priceLow" && styles.activeSortBtn]}
-                        onPress={() => { setSortBy("priceLow"); setSortModalVisible(false); }}
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "priceLow" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("priceLow")}
                       >
-                        <Text style={sortBy === "priceLow" ? styles.activeSortText : styles.sortText}>
-                          Price: Low to High
+                        <Ionicons
+                          name="arrow-up-circle-outline"
+                          size={16}
+                          color={sortBy === "priceLow" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "priceLow" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
+                          Low to High
                         </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
 
-                  {/* Name */}
+                  {/* Name Section */}
                   <View style={styles.sortSection}>
-                    <Text style={[styles.sortSectionTitle, { color: colors.textSecondary }]}>By Name</Text>
+                    <View style={styles.sectionTitleRow}>
+                      <Ionicons name="text-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.sortSectionTitle, { color: colors.textPrimary }]}>By Name</Text>
+                    </View>
                     <TouchableOpacity
-                      style={[styles.sortBtn, sortBy === "nameAZ" && styles.activeSortBtn]}
-                      onPress={() => { setSortBy("nameAZ"); setSortModalVisible(false); }}
+                      style={[
+                        styles.sortOptionCard,
+                        sortBy === "nameAZ" && styles.sortOptionCardActive,
+                      ]}
+                      onPress={() => setSortBy(sortBy === "nameAZ" ? "dateNewest" : "nameAZ")}
                     >
-                      <Text style={sortBy === "nameAZ" ? styles.activeSortText : styles.sortText}>
-                        Category A to Z
-                      </Text>
+                      <View style={[styles.sortOptionIconBox, sortBy === "nameAZ" && styles.sortOptionIconBoxActive]}>
+                        <Ionicons
+                          name="text-outline"
+                          size={18}
+                          color={sortBy === "nameAZ" ? "#FFFFFF" : colors.primary}
+                        />
+                      </View>
+                      <View style={styles.sortOptionTextWrap}>
+                        <Text style={[styles.sortOptionLabel, sortBy === "nameAZ" && styles.sortOptionLabelActive]}>
+                          Category: A to Z
+                        </Text>
+                        <Text style={styles.sortOptionSublabel}>Sort categories alphabetically</Text>
+                      </View>
+                      <Ionicons
+                        name={sortBy === "nameAZ" ? "checkmark-circle" : "ellipse-outline"}
+                        size={20}
+                        color={sortBy === "nameAZ" ? colors.primary : colors.textMuted}
+                      />
                     </TouchableOpacity>
                   </View>
 
-                  {/* Visibility */}
-                  <View style={styles.sortSection}>
-                    <Text style={[styles.sortSectionTitle, { color: colors.textSecondary }]}>Visibility First By</Text>
-                    <View style={styles.sortButtons}>
+                  {/* Visibility Section */}
+                  <View style={[styles.sortSection, { borderBottomWidth: 0 }]}>
+                    <View style={styles.sectionTitleRow}>
+                      <Ionicons name="eye-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.sortSectionTitle, { color: colors.textPrimary }]}>Visibility First</Text>
+                    </View>
+                    <View style={styles.sortOptionsGridThree}>
                       <TouchableOpacity
-                        style={[styles.sortBtn, sortBy === "publicFirst" && styles.activeSortBtn]}
-                        onPress={() => { setSortBy("publicFirst"); setSortModalVisible(false); }}
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "publicFirst" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("publicFirst")}
                       >
-                        <Text style={sortBy === "publicFirst" ? styles.activeSortText : styles.sortText}>
+                        <Ionicons
+                          name="globe-outline"
+                          size={16}
+                          color={sortBy === "publicFirst" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "publicFirst" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
                           Public
                         </Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
-                        style={[styles.sortBtn, sortBy === "privateFirst" && styles.activeSortBtn]}
-                        onPress={() => { setSortBy("privateFirst"); setSortModalVisible(false); }}
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "privateFirst" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("privateFirst")}
                       >
-                        <Text style={sortBy === "privateFirst" ? styles.activeSortText : styles.sortText}>
+                        <Ionicons
+                          name="lock-closed-outline"
+                          size={16}
+                          color={sortBy === "privateFirst" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "privateFirst" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
                           Private
                         </Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
-                        style={[styles.sortBtn, sortBy === "premiumFirst" && styles.activeSortBtn]}
-                        onPress={() => { setSortBy("premiumFirst"); setSortModalVisible(false); }}
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "premiumFirst" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("premiumFirst")}
                       >
-                        <Text style={sortBy === "premiumFirst" ? styles.activeSortText : styles.sortText}>
+                        <Ionicons
+                          name="diamond-outline"
+                          size={16}
+                          color={sortBy === "premiumFirst" ? "#B8860B" : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "premiumFirst" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
                           Premium
                         </Text>
                       </TouchableOpacity>
@@ -919,10 +1293,11 @@ export default function AllWardrobeItemsScreen() {
                 </ScrollView>
 
                 <TouchableOpacity
-                  style={[styles.closeModalBtn, { backgroundColor: colors.card }]}
+                  style={styles.applySortBtn}
                   onPress={() => setSortModalVisible(false)}
+                  activeOpacity={0.85}
                 >
-                  <Text style={[styles.closeModalText, { color: colors.primary }]}>Cancel</Text>
+                  <Text style={styles.applySortBtnText}>Done</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1001,15 +1376,30 @@ const createStyles = (colors: any) =>
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 12,
-      paddingVertical: 6,
-      backgroundColor: colors.card,
+      paddingVertical: 7,
+      backgroundColor: colors.surface,
       borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
       gap: 6,
     },
+    sortButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
     sortButtonText: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.primary,
       fontWeight: "600",
+    },
+    sortButtonTextActive: {
+      color: "#FFFFFF",
+    },
+    sortActiveDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: "#FFFFFF",
     },
     categoriesSection: {
       paddingTop: 16,
@@ -1409,14 +1799,105 @@ const createStyles = (colors: any) =>
       padding: 4,
       zIndex: 5,
     },
+    itemColorTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.card,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 4,
+    },
+    itemColorTagDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    itemColorTagText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    colorDotBorder: {
+      borderWidth: 0.8,
+      borderColor: colors.border || "#D1D5DB",
+    },
+    activeColorBanner: {
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      flexDirection: "row",
+    },
+    activeColorPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.cardHover || colors.surface,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 16,
+      gap: 6,
+      alignSelf: "flex-start",
+    },
+    activeColorBannerText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.primaryDark,
+    },
     modalOverlay: {
       flex: 1,
       justifyContent: "flex-end",
     },
     modalContent: {
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      paddingBottom: 30,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingTop: 12,
+      paddingBottom: 24,
+    },
+    sheetHandle: {
+      width: 44,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: colors.border,
+      alignSelf: "center",
+      marginBottom: 12,
+    },
+    modalHeaderNew: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalSubtitle: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    modalCloseCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.card,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    resetSortBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      marginRight: 6,
+    },
+    resetSortText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.primaryDark,
+    },
+    sortModalScroll: {
+      maxHeight: 460,
     },
     modalHeader: {
       flexDirection: "row",
@@ -1430,40 +1911,161 @@ const createStyles = (colors: any) =>
       fontSize: 18,
       fontWeight: "700",
     },
+    sectionTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 10,
+    },
     sortSection: {
       paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingVertical: 14,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     sortSectionTitle: {
       fontSize: 14,
-      fontWeight: "600",
-      marginBottom: 12,
+      fontWeight: "700",
     },
-    sortButtons: {
+    sortOptionCard: {
       flexDirection: "row",
-      gap: 12,
-    },
-    sortBtn: {
-      flex: 1,
-      padding: 14,
-      borderRadius: 12,
-      backgroundColor: colors.card,
       alignItems: "center",
+      backgroundColor: colors.card,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 8,
     },
-    activeSortBtn: {
+    sortOptionCardActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.cardHover || colors.surface,
+      borderWidth: 1.5,
+    },
+    sortOptionIconBox: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surface,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sortOptionIconBoxActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    sortOptionTextWrap: {
+      flex: 1,
+    },
+    sortOptionLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    sortOptionLabelActive: {
+      color: colors.primaryDark,
+      fontWeight: "700",
+    },
+    sortOptionSublabel: {
+      fontSize: 11,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    subfilterLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      marginBottom: 6,
+    },
+    colorFilterScroll: {
+      paddingVertical: 4,
+      paddingRight: 16,
+    },
+    colorFilterChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.card,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginRight: 8,
+    },
+    colorFilterChipActive: {
+      borderColor: colors.primary,
       backgroundColor: colors.primary,
     },
-    sortText: {
-      color: colors.textSecondary,
+    colorFilterChipText: {
+      fontSize: 12,
       fontWeight: "600",
-      fontSize: 14,
+      color: colors.textPrimary,
     },
-    activeSortText: {
-      color: colors.background,
+    colorFilterChipTextActive: {
+      color: "#FFFFFF",
+    },
+    colorFilterDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      marginRight: 6,
+    },
+    sortOptionsGrid: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    sortOptionsGridThree: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    sortGridOption: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 14,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sortGridOptionActive: {
+      backgroundColor: colors.cardHover || colors.surface,
+      borderColor: colors.primary,
+      borderWidth: 1.5,
+    },
+    sortGridOptionText: {
+      fontSize: 13,
       fontWeight: "600",
-      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    sortGridOptionTextActive: {
+      color: colors.primaryDark,
+      fontWeight: "700",
+    },
+    applySortBtn: {
+      backgroundColor: colors.addButton || colors.primary,
+      paddingVertical: 14,
+      borderRadius: 24,
+      alignItems: "center",
+      marginHorizontal: 20,
+      marginTop: 12,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 5,
+      elevation: 4,
+    },
+    applySortBtnText: {
+      color: colors.textPrimary || "#FFFFFF",
+      fontSize: 15,
+      fontWeight: "700",
     },
     closeModalBtn: {
       marginHorizontal: 20,
