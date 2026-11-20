@@ -264,26 +264,33 @@ export default function ProfileScreen() {
   };
 
   const handleShareComboToStory = (pair: any) => {
-    let mediaUri = "";
-    if (pair.items && Array.isArray(pair.items)) {
-      for (const slot of pair.items) {
-        const g = slot.item || {};
-        const u = g.cutoutImage || g.images?.[0] || g.imageUrl || g.image;
-        if (u) {
-          mediaUri = u;
-          break;
-        }
-      }
-    }
+    const rawItems = Array.isArray(pair.items) ? pair.items : [];
+    const comboItems = rawItems.map((slot: any) => {
+      const g = slot.item || {};
+      const img = g.cutoutImage || g.images?.[0] || g.imageUrl || g.image || "";
+      return {
+        itemId: g._id,
+        image: img,
+        x: slot.x,
+        y: slot.y,
+        width: slot.width,
+        height: slot.height,
+        scale: slot.scale,
+        zIndex: slot.zIndex,
+      };
+    });
 
-    if (!mediaUri) {
+    const primaryMedia = comboItems.find((c) => c.image)?.image || "";
+
+    if (!primaryMedia) {
       Alert.alert("Unable to Share", "No garment image found in this combo.");
       return;
     }
 
     promptShareToStory({
       type: "combo",
-      media: mediaUri,
+      media: primaryMedia,
+      comboItems,
       outfitId: pair._id,
       title: pair.name || "Matched Pair",
       caption: pair.description || pair.name || "Check out my matched combo!",

@@ -22,7 +22,8 @@ import { Ionicons } from "@expo/vector-icons";
 import api from "../../api/api";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 
-const { width } = Dimensions.get("window");
+const { width, height: screenHeight } = Dimensions.get("window");
+const COMBO_CANVAS_HEIGHT = Math.min(screenHeight * 0.54, 460);
 
 function StoryVideo({ uri, paused, style }: { uri: string; paused: boolean; style: any }) {
   const player = useVideoPlayer(uri, (p) => {
@@ -103,6 +104,33 @@ useEffect(() => {
   const group = groups[userIndex];
   const story = group?.stories?.[storyIndex];
   const mediaUrl = resolveImageUrl(story?.media);
+
+  const rawComboItems: any[] =
+    story?.comboItems && story.comboItems.length > 0
+      ? story.comboItems
+      : story?.outfit?.items && story.outfit.items.length > 0
+        ? story.outfit.items.map((slot: any) => {
+            const itm = slot.item || {};
+            const img =
+              itm.cutoutImage ||
+              (Array.isArray(itm.images) ? itm.images[0] : "") ||
+              itm.imageUrl ||
+              itm.image ||
+              "";
+            return {
+              item: itm,
+              image: img,
+              x: slot.x,
+              y: slot.y,
+              scale: slot.scale,
+              width: slot.width,
+              height: slot.height,
+              zIndex: slot.zIndex,
+            };
+          })
+        : [];
+
+  const isComboStory = story?.storyType === "combo" && rawComboItems.length > 0;
   // With this:
   const getOwnerId = (user: any): string | null => {
     if (!user) return null;
@@ -267,7 +295,80 @@ useEffect(() => {
           onLongPress={() => setPaused(true)}
           onPressOut={() => setPaused(false)}
         >
-          {story.mediaType === "image" ? (
+          {isComboStory ? (
+            <View style={[styles.comboCanvasContainer, { height: COMBO_CANVAS_HEIGHT }]}>
+              {/* Studio Silhouette Guide Watermark */}
+              <View style={styles.comboSilhouetteWrapper} pointerEvents="none">
+                <Ionicons name="body-outline" size={170} color="#FFFFFF" style={{ opacity: 0.1 }} />
+              </View>
+
+              {/* RENDER ALL GARMENTS IN THE COMBO */}
+              {rawComboItems.map((slot: any, idx: number) => {
+                const rawImg =
+                  slot.image ||
+                  slot.item?.cutoutImage ||
+                  (Array.isArray(slot.item?.images) ? slot.item.images[0] : "") ||
+                  slot.item?.imageUrl ||
+                  slot.item?.image ||
+                  "";
+                const imgUri = resolveImageUrl(rawImg);
+                if (!imgUri) return null;
+
+                const hasCoordinates = rawComboItems.some(
+                  (s: any, i: number) =>
+                    (typeof s.y === "number" && s.y > 15) ||
+                    (typeof s.x === "number" && s.x > 15 && i > 0)
+                );
+
+                const itemScale = slot.scale || 1;
+                const baseW = slot.width || 170;
+                const baseH = slot.height || 170;
+                const w = Math.min(baseW * itemScale, width - 20);
+                const h = Math.min(baseH * itemScale, COMBO_CANVAS_HEIGHT - 30);
+
+                let left = 0;
+                let top = 0;
+
+                if (hasCoordinates && typeof slot.x === "number" && typeof slot.y === "number") {
+                  left = Math.max(10, Math.min(slot.x, width - w - 10));
+                  top = Math.max(15, Math.min(slot.y, COMBO_CANVAS_HEIGHT - h - 15));
+                } else {
+                  left = (width - w) / 2;
+                  if (rawComboItems.length === 2) {
+                    top = idx === 0 ? 30 : 210;
+                  } else if (rawComboItems.length === 3) {
+                    top = idx === 0 ? 15 : idx === 1 ? 145 : 275;
+                  } else {
+                    top = Math.min(idx * 110 + 20, COMBO_CANVAS_HEIGHT - h - 10);
+                  }
+                }
+
+                const z = slot.zIndex || idx + 1;
+
+                return (
+                  <View
+                    key={idx}
+                    style={{
+                      position: "absolute",
+                      left,
+                      top,
+                      width: w,
+                      height: h,
+                      zIndex: z,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Image
+                      source={{ uri: imgUri }}
+                      style={{ width: "100%", height: "100%" }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          ) : story.mediaType === "image" ? (
             <Image
               source={{ uri: mediaUrl }}
               style={styles.media}
@@ -326,7 +427,9 @@ useEffect(() => {
               <Text style={styles.storyStickerTitle} numberOfLines={1}>
                 {story.outfit?.name || story.caption || "View Matched Combo"}
               </Text>
-              <Text style={styles.storyStickerSubtitle}>Tap to explore outfit</Text>
+              <Text style={styles.storyStickerSubtitle}>
+                {rawComboItems.length > 0 ? `${rawComboItems.length} items in combo • Tap to explore` : "Tap to explore outfit"}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
           </TouchableOpacity>
@@ -422,6 +525,17 @@ const styles = StyleSheet.create({
   username: { color: "#fff", fontWeight: "600", fontSize: 16 },
   touch: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" },
   media: { width: "100%", height: "100%", resizeMode: "contain" },
+  comboCanvasContainer: {
+    width: "100%",
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  comboSilhouetteWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   viewsContainer: {
     position: "absolute",
     bottom: 40,

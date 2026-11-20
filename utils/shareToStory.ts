@@ -2,6 +2,17 @@ import api from "@/api/api";
 import { Alert } from "react-native";
 import { storage } from "@/utils/storage";
 
+export interface ComboItemPayload {
+  itemId?: string;
+  image: string;
+  x?: number;
+  y?: number;
+  scale?: number;
+  width?: number;
+  height?: number;
+  zIndex?: number;
+}
+
 export interface ShareToStoryOptions {
   type: "post" | "combo";
   media: string;
@@ -9,6 +20,7 @@ export interface ShareToStoryOptions {
   outfitId?: string;
   caption?: string;
   title?: string;
+  comboItems?: ComboItemPayload[];
 }
 
 /**
@@ -32,6 +44,7 @@ export const shareToStory = async (options: ShareToStoryOptions): Promise<boolea
       storyType: options.type,
       itemId: options.itemId,
       outfitId: options.outfitId,
+      comboItems: options.comboItems || [],
       caption: options.caption || options.title || "",
       duration: 7,
     });

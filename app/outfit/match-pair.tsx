@@ -581,25 +581,72 @@ export default function MatchPairScreen() {
     }
   };
 
-  const handleShareCurrentComboToStory = (outfitId?: string, title?: string) => {
-    let mediaUri = "";
-    for (const g of canvasGarments) {
-      const u = g.cutoutImage || g.images?.[0] || g.imageUrl || g.image;
-      if (u) {
-        mediaUri = u;
-        break;
-      }
-    }
-
-    if (!mediaUri) {
+  const handleShareCurrentComboToStory = async (outfitId?: string, title?: string) => {
+    if (canvasGarments.length === 0) {
       Alert.alert("Unable to Share", "No garment image found on the canvas to share.");
       return;
     }
 
+    let targetOutfitId = outfitId || existingOutfitId;
+
+    // Collect all garments on canvas with positions and sizes
+    const comboItems = canvasGarments.map((g) => {
+      const itm = g.item || {};
+      const img = itm.cutoutImage || itm.images?.[0] || itm.imageUrl || itm.image || "";
+      return {
+        itemId: itm._id,
+        image: img,
+        x: g.x,
+        y: g.y,
+        width: g.width,
+        height: g.height,
+        scale: g.scale,
+        zIndex: g.zIndex,
+      };
+    });
+
+    const primaryMedia = comboItems.find((c) => c.image)?.image || "";
+
+    if (!primaryMedia) {
+      Alert.alert("Unable to Share", "No garment image found on the canvas to share.");
+      return;
+    }
+
+    // Auto-save outfit if not yet saved so that outfitId is always valid
+    if (!targetOutfitId) {
+      try {
+        const token = await storage.getItem("token");
+        if (token) {
+          const payload = {
+            name: outfitName.trim() || `Pair ${new Date().toLocaleDateString()}`,
+            items: canvasGarments.map((g) => ({
+              itemId: g.item._id,
+              x: g.x,
+              y: g.y,
+              scale: g.scale,
+              width: g.width,
+              height: g.height,
+              zIndex: g.zIndex,
+            })),
+          };
+          const res = await api.post("/api/outfits", payload, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.data?.outfit?._id) {
+            targetOutfitId = res.data.outfit._id;
+            setExistingOutfitId(targetOutfitId);
+          }
+        }
+      } catch (err) {
+        console.log("Auto-save for story sharing:", err);
+      }
+    }
+
     promptShareToStory({
       type: "combo",
-      media: mediaUri,
-      outfitId: outfitId || existingOutfitId || undefined,
+      media: primaryMedia,
+      comboItems,
+      outfitId: targetOutfitId || undefined,
       title: title || outfitName.trim() || "Matched Pair",
       caption: outfitDesc.trim() || title || "Check out my new outfit combo!",
     });
