@@ -958,11 +958,16 @@ export default function ProfileScreen() {
                   <View style={styles.bannerWaveShape} pointerEvents="none" />
 
                   {/* Left 3D clothes rack illustration */}
-                  <Image
-                    source={require("@/assets/images/create_pair_banner.png")}
-                    style={styles.bannerClothesImage}
-                    resizeMode="contain"
-                  />
+                  <View style={styles.bannerClothesImageWrapper}>
+                    <Image
+                      source={require("@/assets/images/create_pair_banner.png")}
+                      style={styles.bannerClothesImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+
+                  {/* Vertical divider line */}
+                  <View style={styles.bannerDivider} />
 
                   {/* Middle Text info */}
                   <View style={styles.bannerTextContainer}>
@@ -999,119 +1004,119 @@ export default function ProfileScreen() {
                 </View>
               ) : (
                 <View style={styles.pairsList}>
-                  {matchedPairs.map((pair) => (
-                    <TouchableOpacity
-                      key={pair._id}
-                      style={styles.pairCard}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/outfit/match-pair",
-                          params: { outfitId: pair._id },
-                        })
-                      }
-                      activeOpacity={0.88}
-                    >
-                      {/* Pair Card Header */}
-                      <View style={styles.pairCardHeader}>
-                        <View style={{ flex: 1, marginRight: 8 }}>
-                          <Text style={styles.pairCardTitle} numberOfLines={1}>
-                            {pair.name || "Untitled Pair"}
-                          </Text>
-                          <Text style={styles.pairCardDate}>
-                            {new Date(pair.createdAt).toLocaleDateString(undefined, {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })}{" "}
-                            • {pair.items?.length || 0} items
-                          </Text>
+                  {matchedPairs.map((pair) => {
+                    const openPair = () =>
+                      router.push({
+                        pathname: "/outfit/match-pair",
+                        params: { outfitId: pair._id },
+                      });
+
+                    return (
+                      <View key={pair._id} style={styles.pairCard}>
+                        {/* Pair Card Header */}
+                        <View style={styles.pairCardHeader}>
+                          <TouchableOpacity
+                            style={{ flex: 1, marginRight: 8 }}
+                            onPress={openPair}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.pairCardTitle} numberOfLines={1}>
+                              {pair.name || "Untitled Pair"}
+                            </Text>
+                            <Text style={styles.pairCardDate}>
+                              {new Date(pair.createdAt).toLocaleDateString(undefined, {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}{" "}
+                              • {pair.items?.length || 0} items
+                            </Text>
+                          </TouchableOpacity>
+
+                          <View style={styles.pairHeaderActionsRow}>
+                            {/* Share to Story */}
+                            <TouchableOpacity
+                              style={styles.pairShareBtn}
+                              onPress={() => handleShareComboToStory(pair)}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            >
+                              <Image
+                                source={require("../../assets/icons/share.png")}
+                                style={{ width: 17, height: 17, resizeMode: "contain", tintColor: "#7C3AED" }}
+                              />
+                            </TouchableOpacity>
+
+                            {/* Edit / View in Canvas */}
+                            <TouchableOpacity
+                              style={styles.pairSettingsBtn}
+                              onPress={openPair}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            >
+                              <Ionicons name="settings-outline" size={17} color="#6D28D9" />
+                            </TouchableOpacity>
+
+                            {/* Delete Pair */}
+                            <TouchableOpacity
+                              style={styles.pairDeleteBtn}
+                              onPress={() => deleteMatchedPair(pair._id)}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            >
+                              <Ionicons name="trash-outline" size={17} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
                         </View>
 
-                        <View style={styles.pairHeaderActionsRow}>
-                          {/* Share to Story */}
-                          <TouchableOpacity
-                            style={styles.pairShareBtn}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              handleShareComboToStory(pair);
-                            }}
-                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                          >
-                            <Image
-                              source={require("../../assets/icons/share.png")}
-                              style={{ width: 17, height: 17, resizeMode: "contain", tintColor: "#7C3AED" }}
-                            />
-                          </TouchableOpacity>
+                        {/* Garments horizontal preview row with (+) connectors - smoothly scrollable */}
+                        <ScrollView
+                          horizontal
+                          nestedScrollEnabled={true}
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.pairGarmentsRow}
+                        >
+                          {pair.items?.map((itemSlot: any, idx: number) => {
+                            const garment = itemSlot.item || {};
+                            const imgUri =
+                              garment.cutoutImage ||
+                              garment.images?.[0] ||
+                              garment.imageUrl ||
+                              garment.image;
 
-                          {/* Edit / View in Canvas */}
-                          <TouchableOpacity
-                            style={styles.pairSettingsBtn}
-                            onPress={() =>
-                              router.push({
-                                pathname: "/outfit/match-pair",
-                                params: { outfitId: pair._id },
-                              })
-                            }
-                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                          >
-                            <Ionicons name="settings-outline" size={17} color="#6D28D9" />
-                          </TouchableOpacity>
+                            return (
+                              <React.Fragment key={idx}>
+                                <TouchableOpacity
+                                  style={styles.pairGarmentThumbWrapper}
+                                  activeOpacity={0.8}
+                                  onPress={openPair}
+                                >
+                                  {imgUri ? (
+                                    <Image
+                                      source={{ uri: resolveImageUrl(imgUri) }}
+                                      style={styles.pairGarmentThumb}
+                                      resizeMode="contain"
+                                    />
+                                  ) : (
+                                    <View style={styles.pairGarmentThumbPlaceholder}>
+                                      <Ionicons name="shirt-outline" size={24} color="#94A3B8" />
+                                    </View>
+                                  )}
+                                </TouchableOpacity>
 
-                          {/* Delete Pair */}
-                          <TouchableOpacity
-                            style={styles.pairDeleteBtn}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              deleteMatchedPair(pair._id);
-                            }}
-                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                          >
-                            <Ionicons name="trash-outline" size={17} color="#EF4444" />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-
-                      {/* Garments horizontal preview row with (+) connectors */}
-                      <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.pairGarmentsRow}
-                      >
-                        {pair.items?.map((itemSlot: any, idx: number) => {
-                          const garment = itemSlot.item || {};
-                          const imgUri =
-                            garment.cutoutImage ||
-                            garment.images?.[0] ||
-                            garment.imageUrl ||
-                            garment.image;
-
-                          return (
-                            <React.Fragment key={idx}>
-                              <View style={styles.pairGarmentThumbWrapper}>
-                                {imgUri ? (
-                                  <Image
-                                    source={{ uri: resolveImageUrl(imgUri) }}
-                                    style={styles.pairGarmentThumb}
-                                    resizeMode="contain"
-                                  />
-                                ) : (
-                                  <View style={styles.pairGarmentThumbPlaceholder}>
-                                    <Ionicons name="shirt-outline" size={24} color="#94A3B8" />
-                                  </View>
+                                {idx < (pair.items?.length || 0) - 1 && (
+                                  <TouchableOpacity
+                                    style={styles.pairInlinePlusBadge}
+                                    activeOpacity={0.8}
+                                    onPress={openPair}
+                                  >
+                                    <Ionicons name="add" size={13} color="#FFFFFF" />
+                                  </TouchableOpacity>
                                 )}
-                              </View>
-
-                              {idx < (pair.items?.length || 0) - 1 && (
-                                <View style={styles.pairInlinePlusBadge}>
-                                  <Ionicons name="add" size={13} color="#FFFFFF" />
-                                </View>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </ScrollView>
-                    </TouchableOpacity>
-                  ))}
+                              </React.Fragment>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -1516,14 +1521,27 @@ const createStyles = (theme: any) =>
       borderRadius: 70,
       backgroundColor: "rgba(255, 255, 255, 0.08)",
     },
-    bannerClothesImage: {
+    bannerClothesImageWrapper: {
       width: 82,
       height: 72,
-      borderRadius: 12,
+      borderRadius: 14,
+      overflow: "hidden",
+      backgroundColor: "rgba(0, 0, 0, 0.25)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    bannerClothesImage: {
+      width: "100%",
+      height: "100%",
+    },
+    bannerDivider: {
+      width: 1,
+      height: 52,
+      backgroundColor: "rgba(255, 255, 255, 0.28)",
+      marginHorizontal: 12,
     },
     bannerTextContainer: {
       flex: 1,
-      marginLeft: 12,
       marginRight: 8,
     },
     bannerTitle: {
@@ -1658,7 +1676,9 @@ const createStyles = (theme: any) =>
     pairGarmentsRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 2,
+      paddingVertical: 4,
+      paddingHorizontal: 2,
+      paddingRight: 16,
     },
     pairGarmentThumbWrapper: {
       width: 82,
