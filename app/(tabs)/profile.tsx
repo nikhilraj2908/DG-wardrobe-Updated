@@ -2,11 +2,11 @@ import AppBackground from "@/components/AppBackground";
 import { useFollow } from "@/context/FollowContext";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { promptShareToStory } from "@/utils/shareToStory";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { storage } from "@/utils/storage";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { LinearGradient } from "expo-linear-gradient";
 // import HelpSupportPage from '../HelpSupportPage/HelpSupportPage'; // import your HelpSupportPage
 
 
@@ -646,11 +646,11 @@ export default function ProfileScreen() {
     setSettingsModalVisible(false);
     router.push("/help");
   };
-useEffect(() => {
-  if (blocked) {
-    router.replace('/blocked');
-  }
-}, [blocked]);
+  useEffect(() => {
+    if (blocked) {
+      router.replace('/blocked');
+    }
+  }, [blocked]);
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -742,7 +742,7 @@ useEffect(() => {
             <View style={styles.statBox}>
               <Ionicons
                 name="wallet-outline"
-                size={26}
+                size={23}
                 color={theme.colors.primaryDark || "#7C3AED"}
                 style={styles.statIcon}
               />
@@ -757,7 +757,7 @@ useEffect(() => {
             >
               <Ionicons
                 name="people-outline"
-                size={26}
+                size={23}
                 color={theme.colors.primaryDark || "#7C3AED"}
                 style={styles.statIcon}
               />
@@ -1228,6 +1228,7 @@ const createStyles = (theme: any) =>
     userCard: {
       flexDirection: "row",
       alignItems: "flex-start",
+      marginTop: 20,
       marginBottom: 20,
     },
     avatarContainer: {
@@ -1295,11 +1296,11 @@ const createStyles = (theme: any) =>
 
     actionButtonsContainer: {
       position: "absolute",
-      top: 16,
-      right: 1,
+      top: 20,
+      right: 2,
       flexDirection: "row",
       alignItems: "center",
-      gap: 5,
+      gap: 6,
     },
 
     actionBtn: {
@@ -1330,6 +1331,7 @@ const createStyles = (theme: any) =>
 
 
     name: {
+      color: theme.colors.textPrimary,
       fontWeight: "700",
       fontSize: 17,
       marginBottom: 4,
@@ -1355,18 +1357,24 @@ const createStyles = (theme: any) =>
     statBox: {
       flex: 1,
       backgroundColor: theme.colors.surface || "#FAF5FF",
-      borderRadius: 20,
-      borderWidth: 1.5,
-      borderColor: theme.colors.border || "#E9D5FF",
-      paddingVertical: 14,
+      borderRadius: 18,
+      borderTopWidth: 0,
+      borderLeftWidth: 0,
+      borderRightWidth: 2,
+      borderBottomWidth: 3,
+      borderRightColor: theme.colors.border || "#E9D5FF",
+      borderBottomColor: theme.colors.border || "#E9D5FF",
+      borderTopColor: "transparent",
+      borderLeftColor: "transparent",
+      paddingVertical: 12,
       paddingHorizontal: 6,
       alignItems: "center",
       justifyContent: "center",
       shadowColor: "#7C3AED",
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      elevation: 2,
+      shadowOffset: { width: 2, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 6,
+      elevation: 4,
     },
     statIcon: {
       marginBottom: 6,
@@ -1866,17 +1874,17 @@ const createStyles = (theme: any) =>
       marginTop: 20,
       color: "gray",
     },
-logoutButton: {
-  marginTop: 20,
-  paddingVertical: 12,
-  paddingHorizontal: 24,
-  backgroundColor: theme.colors.primary,
-  borderRadius: 8,
-  alignSelf: 'center',
-},
-logoutButtonText: {
-  color: '#fff',
-  fontWeight: '600',
-  fontSize: 16,
-},
+    logoutButton: {
+      marginTop: 20,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      backgroundColor: theme.colors.primary,
+      borderRadius: 8,
+      alignSelf: 'center',
+    },
+    logoutButtonText: {
+      color: '#fff',
+      fontWeight: '600',
+      fontSize: 16,
+    },
   });
