@@ -1,8 +1,9 @@
 // app/wardrobe/items.tsx
+import { useTheme } from "@/app/theme/ThemeContext";
 import AppBackground from "@/components/AppBackground";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
-import { Ionicons } from "@expo/vector-icons";
 import { storage } from "@/utils/storage";
+import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,10 +19,8 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import api from "../../api/api";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "@/app/theme/ThemeContext";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -1079,10 +1078,10 @@ export default function AllWardrobeItemsScreen() {
                 {selectedCategory && selectedColor
                   ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}" • Color: ${selectedColor}`
                   : selectedCategory
-                  ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}"`
-                  : selectedColor
-                  ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} with color "${selectedColor}"`
-                  : `${filteredItems.length} items in collection`}
+                    ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}"`
+                    : selectedColor
+                      ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} with color "${selectedColor}"`
+                      : `${filteredItems.length} items in collection`}
                 {sortBy === "colorAZ" ? " • Sorted by Color" : ""}
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -1153,10 +1152,10 @@ export default function AllWardrobeItemsScreen() {
                   {selectedCategory && selectedColor
                     ? `No ${selectedColor} items in "${selectedCategory}"`
                     : selectedColor
-                    ? `No items with color "${selectedColor}"`
-                    : selectedCategory
-                    ? `No items in "${selectedCategory}"`
-                    : "No items found"}
+                      ? `No items with color "${selectedColor}"`
+                      : selectedCategory
+                        ? `No items in "${selectedCategory}"`
+                        : "No items found"}
                 </Text>
                 <Text style={styles.emptySubtitle}>
                   {selectedCategory || selectedColor
@@ -1862,7 +1861,6 @@ const createStyles = (colors: any) =>
       fontWeight: "700",
     },
     colorMatchedItem: {
-      borderWidth: 2,
       borderColor: colors.primary,
     },
     resultsRow: {
@@ -1895,11 +1893,11 @@ const createStyles = (colors: any) =>
     resultsInfo: {
       paddingHorizontal: 16,
       paddingVertical: 12,
-     backgroundColor: "transparent",
+      backgroundColor: "transparent",
 
     },
 
-    
+
     resultsText: {
       fontSize: 14,
       color: colors.textSecondary,
@@ -1955,7 +1953,9 @@ const createStyles = (colors: any) =>
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 3,
-      
+      borderWidth: 2,
+borderColor: "transparent",
+
     },
     gridImageContainer: {
       position: "relative",
@@ -2034,6 +2034,8 @@ const createStyles = (colors: any) =>
       shadowOpacity: 0.05,
       shadowRadius: 3,
       elevation: 2,
+      borderWidth: 2,
+borderColor: "transparent",
     },
     listImage: {
       width: 80,
@@ -2122,7 +2124,6 @@ const createStyles = (colors: any) =>
       color: colors.textSecondary,
     },
     selectedItem: {
-      borderWidth: 2,
       borderColor: colors.primary,
     },
     dimOverlay: {
