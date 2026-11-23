@@ -1,24 +1,36 @@
-import { Slot, Stack } from "expo-router";
+import { Slot } from "expo-router";
 import * as Font from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { View, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { SavedItemsProvider } from "../context/SavedItemsContext";
 import { FollowProvider } from "@/context/FollowContext";
-import { AuthProvider, useAuth } from "../context/AuthContext";
+import { AuthProvider } from "../context/AuthContext";
 import { ThemeProvider } from "./theme/ThemeContext";
 import AuthGate from "@/components/AuthGate";
-/* ---------------- AUTH GATE ---------------- */
+
+// Prevent splash screen from auto-hiding until initial fonts & auth are ready
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /* ---------------- ROOT ---------------- */
 export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
-    Font.loadAsync({
-      Cookie: require("../assets/fonts/Cookie-Regular.ttf"),
-    }).then(() => setFontsLoaded(true));
+    async function prepare() {
+      try {
+        await Font.loadAsync({
+          Cookie: require("../assets/fonts/Cookie-Regular.ttf"),
+        });
+      } catch (e) {
+        console.warn("Font loading error:", e);
+      } finally {
+        setFontsLoaded(true);
+      }
+    }
+
+    prepare();
   }, []);
 
   if (!fontsLoaded) {
@@ -27,18 +39,17 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-  <SafeAreaProvider>
-    <FollowProvider>
-      <SavedItemsProvider>
-        <ThemeProvider>
-          <AuthGate>
-            <Slot />
-          </AuthGate>
-        </ThemeProvider>
-      </SavedItemsProvider>
-    </FollowProvider>
-  </SafeAreaProvider>
-</AuthProvider>
-
+      <SafeAreaProvider>
+        <FollowProvider>
+          <SavedItemsProvider>
+            <ThemeProvider>
+              <AuthGate>
+                <Slot />
+              </AuthGate>
+            </ThemeProvider>
+          </SavedItemsProvider>
+        </FollowProvider>
+      </SafeAreaProvider>
+    </AuthProvider>
   );
 }

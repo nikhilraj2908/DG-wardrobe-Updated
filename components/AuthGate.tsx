@@ -1,11 +1,13 @@
-import { View, ActivityIndicator } from "react-native";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSegments } from "expo-router";
-import { useEffect } from "react";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useRef } from "react";
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
+  const hasHiddenSplash = useRef(false);
+
   const {
     isAuthenticated,
     hydrated,
@@ -29,30 +31,40 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       if (!inAuthGroup) {
         router.replace("/(auth)/welcome");
       }
-      return;
-    }
-
-    // 2️⃣ Logged in but profile incomplete: redirect to complete-profile
-    if (profileCompleted === false) {
+    } else if (profileCompleted === false) {
+      // 2️⃣ Logged in but profile incomplete: redirect to complete-profile
       if (!isCompleteProfile) {
         router.replace("/(auth)/complete-profile");
       }
-      return;
+    } else if (profileCompleted === true && inAuthGroup) {
+      // 3️⃣ Fully logged in: block auth screens, redirect to main app
+      router.replace("/(tabs)/profile");
     }
 
-    // 3️⃣ Fully logged in: block auth screens, redirect to main app
-    if (profileCompleted === true && inAuthGroup) {
-      router.replace("/(tabs)/profile");
+    // Smoothly dismiss splash screen once auth resolution and initial route are set
+    if (!hasHiddenSplash.current) {
+      hasHiddenSplash.current = true;
+      setTimeout(() => {
+        SplashScreen.hideAsync().catch(() => {});
+      }, 150);
     }
   }, [isAuthenticated, hydrated, profileCompleted, authInProgress, segments]);
 
-  // Wait for hydration before rendering anything
+  // Safety fallback: if hydration takes > 3.5 seconds, hide splash screen so user is never blocked
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!hasHiddenSplash.current) {
+        hasHiddenSplash.current = true;
+        SplashScreen.hideAsync().catch(() => {});
+      }
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // While auth is hydrating, keep screen blank (under native splash screen) without showing spinners
   if (!hydrated) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    return null;
   }
 
   return <>{children}</>;
