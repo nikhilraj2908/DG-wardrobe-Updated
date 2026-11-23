@@ -506,10 +506,18 @@ export default function AllWardrobeItemsScreen() {
         });
         break;
       case "dateNewest":
-        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        list.sort((a, b) => {
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          return (isNaN(bTime) ? 0 : bTime) - (isNaN(aTime) ? 0 : aTime);
+        });
         break;
       case "dateOldest":
-        list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        list.sort((a, b) => {
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          return (isNaN(aTime) ? 0 : aTime) - (isNaN(bTime) ? 0 : bTime);
+        });
         break;
       case "priceHigh":
         list.sort((a, b) => b.price - a.price);
@@ -670,9 +678,9 @@ export default function AllWardrobeItemsScreen() {
       >
         <View style={styles.gridImageContainer}>
           <Image
-            key={`image-${itemKey}`}
             source={imageUri ? { uri: imageUri } : require("../../assets/images/bg.jpg")}
             style={styles.gridImage}
+            resizeMode="cover"
             onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
           />
 
@@ -764,6 +772,7 @@ export default function AllWardrobeItemsScreen() {
         <Image
           source={imageUri ? { uri: imageUri } : require("../../assets/images/bg.jpg")}
           style={styles.listImage}
+          resizeMode="cover"
         />
 
         <View style={styles.listItemInfo}>
@@ -1068,24 +1077,52 @@ export default function AllWardrobeItemsScreen() {
                   : `${filteredItems.length} items in collection`}
                 {sortBy === "colorAZ" ? " • Sorted by Color" : ""}
               </Text>
-              {selectedColor && (
-                <TouchableOpacity
-                  style={styles.activeColorPill}
-                  onPress={() => setSelectedColor(null)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.colorFilterDot,
-                      { backgroundColor: getColorHex(selectedColor) },
-                      selectedColor.toLowerCase() === "white" && styles.colorDotBorder,
-                    ]}
-                  />
-                  <Text style={styles.activeColorBannerText}>Color: {selectedColor}</Text>
-                  <Ionicons name="close-circle" size={15} color={colors.primaryDark} />
-                </TouchableOpacity>
-              )}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                {selectedCategory && (
+                  <TouchableOpacity
+                    style={styles.activeColorPill}
+                    onPress={() => setSelectedCategory(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="pricetag-outline" size={13} color={colors.primaryDark} />
+                    <Text style={styles.activeColorBannerText}>Category: {selectedCategory}</Text>
+                    <Ionicons name="close-circle" size={15} color={colors.primaryDark} />
+                  </TouchableOpacity>
+                )}
+                {selectedColor && (
+                  <TouchableOpacity
+                    style={styles.activeColorPill}
+                    onPress={() => setSelectedColor(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.colorFilterDot,
+                        { backgroundColor: getColorHex(selectedColor) },
+                        selectedColor.toLowerCase() === "white" && styles.colorDotBorder,
+                      ]}
+                    />
+                    <Text style={styles.activeColorBannerText}>Color: {selectedColor}</Text>
+                    <Ionicons name="close-circle" size={15} color={colors.primaryDark} />
+                  </TouchableOpacity>
+                )}
+                {selectedCategory && selectedColor && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedCategory(null);
+                      setSelectedColor(null);
+                    }}
+                    style={[styles.activeColorPill, { backgroundColor: colors.danger + "15", borderColor: colors.danger }]}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.activeColorBannerText, { color: colors.danger }]}>Clear All</Text>
+                    <Ionicons name="close-circle" size={15} color={colors.danger} />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
 
