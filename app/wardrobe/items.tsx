@@ -3,6 +3,7 @@ import AppBackground from "@/components/AppBackground";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
 import { storage } from "@/utils/storage";
+import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -677,11 +678,12 @@ export default function AllWardrobeItemsScreen() {
         ]}
       >
         <View style={styles.gridImageContainer}>
-          <Image
+          <ExpoImage
             source={imageUri ? { uri: imageUri } : require("../../assets/images/bg.jpg")}
             style={styles.gridImage}
-            resizeMode="cover"
-            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
           />
 
           {itemSelectionMode && !isSelected && <View style={styles.dimOverlay} />}
@@ -769,10 +771,12 @@ export default function AllWardrobeItemsScreen() {
           itemSelectionMode && !isSelected && styles.dimmedListItem
         ]}
       >
-        <Image
+        <ExpoImage
           source={imageUri ? { uri: imageUri } : require("../../assets/images/bg.jpg")}
           style={styles.listImage}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
         />
 
         <View style={styles.listItemInfo}>
@@ -1950,6 +1954,8 @@ const createStyles = (colors: any) =>
       position: "relative",
       width: "100%",
       height: 160,
+      backgroundColor: colors.cardHover || colors.card || "#F3F4F6",
+      overflow: "hidden",
     },
     gridImage: {
       width: "100%",
