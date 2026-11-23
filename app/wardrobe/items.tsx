@@ -1895,8 +1895,11 @@ const createStyles = (colors: any) =>
     resultsInfo: {
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: colors.card,
+     backgroundColor: "transparent",
+
     },
+
+    
     resultsText: {
       fontSize: 14,
       color: colors.textSecondary,
@@ -1952,6 +1955,7 @@ const createStyles = (colors: any) =>
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 3,
+      
     },
     gridImageContainer: {
       position: "relative",
@@ -1959,7 +1963,7 @@ const createStyles = (colors: any) =>
       height: 160,
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
-      backgroundColor: colors.cardHover || colors.card || "#F3F4F6",
+      backgroundColor: "transparent",
       overflow: "hidden",
     },
     gridImage: {
