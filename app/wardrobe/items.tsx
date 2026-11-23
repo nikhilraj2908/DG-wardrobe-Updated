@@ -684,6 +684,8 @@ export default function AllWardrobeItemsScreen() {
             contentFit="cover"
             transition={200}
             cachePolicy="memory-disk"
+            recyclingKey={item._id}
+            priority="high"
           />
 
           {itemSelectionMode && !isSelected && <View style={styles.dimOverlay} />}
@@ -777,6 +779,8 @@ export default function AllWardrobeItemsScreen() {
           contentFit="cover"
           transition={200}
           cachePolicy="memory-disk"
+          recyclingKey={item._id}
+          priority="high"
         />
 
         <View style={styles.listItemInfo}>
@@ -1943,7 +1947,6 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.surface,
       borderRadius: 16,
       marginBottom: 16,
-      overflow: "hidden",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -1954,12 +1957,16 @@ const createStyles = (colors: any) =>
       position: "relative",
       width: "100%",
       height: 160,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
       backgroundColor: colors.cardHover || colors.card || "#F3F4F6",
       overflow: "hidden",
     },
     gridImage: {
       width: "100%",
       height: "100%",
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
     },
     gridCategoryBadge: {
       position: "absolute",
@@ -1977,6 +1984,8 @@ const createStyles = (colors: any) =>
     },
     gridItemInfo: {
       padding: 12,
+      borderBottomLeftRadius: 16,
+      borderBottomRightRadius: 16,
     },
     gridItemHeader: {
       flexDirection: "row",
