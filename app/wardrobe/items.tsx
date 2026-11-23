@@ -349,6 +349,8 @@ export default function AllWardrobeItemsScreen() {
 
   const getColorHex = (name?: string): string => {
     if (!name) return "#A855F7";
+    const clean = name.trim().toLowerCase();
+    if (clean.startsWith("#")) return clean;
     const map: Record<string, string> = {
       black: "#111827",
       white: "#FFFFFF",
@@ -365,17 +367,48 @@ export default function AllWardrobeItemsScreen() {
       purple: "#7C3AED",
       orange: "#EA580C",
     };
-    return map[name.trim().toLowerCase()] || "#A855F7";
+    return map[clean] || "#A855F7";
+  };
+
+  const COLOR_NAME_ALIASES: Record<string, string[]> = {
+    black: ["black", "#000000", "#111827", "#000", "noir", "jet black", "dark black"],
+    white: ["white", "#ffffff", "#fff", "blanc", "off white", "off-white"],
+    navy: ["navy", "#1e3a8a", "navy blue", "dark blue"],
+    blue: ["blue", "#2563eb", "light blue", "sky blue", "cyan", "indigo", "denim", "royal blue"],
+    grey: ["grey", "gray", "#6b7280", "#808080", "silver", "charcoal"],
+    beige: ["beige", "#d4b996", "khaki", "cream", "sand", "tan", "nude", "ivory"],
+    brown: ["brown", "#78350f", "#8b4513", "chocolate", "coffee"],
+    red: ["red", "#dc2626", "#ff0000", "crimson", "maroon", "burgundy"],
+    pink: ["pink", "#ec4899", "rose", "magenta", "blush", "salmon", "baby pink"],
+    green: ["green", "#059669", "#00ff00", "olive", "emerald", "mint", "forest green"],
+    yellow: ["yellow", "#f59e0b", "#ffff00", "mustard", "gold"],
+    purple: ["purple", "#7c3aed", "violet", "lavender", "lilac", "plum"],
+    orange: ["orange", "#ea580c", "peach", "coral", "tangerine", "rust"],
   };
 
   const isColorMatch = (itemColor?: string, targetColor?: string): boolean => {
     const cleanItem = (itemColor || "").trim().toLowerCase();
     const cleanTarget = (targetColor || "").trim().toLowerCase();
     if (!cleanItem || !cleanTarget) return false;
-    return cleanItem === cleanTarget || cleanItem.includes(cleanTarget) || cleanTarget.includes(cleanItem);
-  };
 
-  const [filterOnlyColor, setFilterOnlyColor] = useState(false);
+    // 1. Direct equality
+    if (cleanItem === cleanTarget) return true;
+
+    // 2. Substring matching
+    if (cleanItem.includes(cleanTarget) || cleanTarget.includes(cleanItem)) return true;
+
+    // 3. Alias / Hex / Variation matching
+    for (const [canonical, aliases] of Object.entries(COLOR_NAME_ALIASES)) {
+      const targetMatches = cleanTarget === canonical || aliases.includes(cleanTarget);
+      if (targetMatches) {
+        if (cleanItem === canonical || aliases.some((a) => cleanItem === a || cleanItem.includes(a) || a.includes(cleanItem))) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
 
   const PRESET_POPULAR_COLORS = useMemo(
     () => [
@@ -452,13 +485,10 @@ export default function AllWardrobeItemsScreen() {
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       const matchCat = selectedCategory ? item.category?.name === selectedCategory : true;
-      if (!matchCat) return false;
-      if (selectedColor && filterOnlyColor) {
-        return isColorMatch(item.color, selectedColor);
-      }
-      return true;
+      const matchColor = selectedColor ? isColorMatch(item.color, selectedColor) : true;
+      return matchCat && matchColor;
     });
-  }, [items, selectedCategory, selectedColor, filterOnlyColor]);
+  }, [items, selectedCategory, selectedColor]);
 
   const sortedItems = useMemo(() => {
     const list = [...filteredItems];
@@ -520,20 +550,8 @@ export default function AllWardrobeItemsScreen() {
         break;
     }
 
-    // When a color is clicked, SORT items matching that color to the VERY TOP!
-    if (selectedColor && !filterOnlyColor) {
-      list.sort((a, b) => {
-        const aMatch = isColorMatch(a.color, selectedColor) ? 1 : 0;
-        const bMatch = isColorMatch(b.color, selectedColor) ? 1 : 0;
-        if (aMatch !== bMatch) {
-          return bMatch - aMatch;
-        }
-        return 0;
-      });
-    }
-
     return list;
-  }, [filteredItems, sortBy, selectedColor, filterOnlyColor]);
+  }, [filteredItems, sortBy]);
   const DEFAULT_IMAGE = "https://ui-avatars.com/api/?name=Item&background=random";
 
   const getBrandLabel = (item: WardrobeItem) => {
@@ -1039,19 +1057,24 @@ export default function AllWardrobeItemsScreen() {
 
           {/* ========== RESULTS INFO ========== */}
           <View style={styles.resultsInfo}>
-            <Text style={styles.resultsText}>
-              {selectedCategory
-                ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}"`
-                : `${filteredItems.length} items in collection`}
-              {selectedColor
-                ? ` • ${filterOnlyColor ? `Only ${selectedColor}` : `Sorted: ${selectedColor} first`}`
-                : sortBy === "colorAZ"
-                ? " • Sorted by Color"
-                : ""}
-            </Text>
-            {selectedColor && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                <View style={styles.activeColorPill}>
+            <View style={styles.resultsRow}>
+              <Text style={styles.resultsText}>
+                {selectedCategory && selectedColor
+                  ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}" • Color: ${selectedColor}`
+                  : selectedCategory
+                  ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} in "${selectedCategory}"`
+                  : selectedColor
+                  ? `${filteredItems.length} ${filteredItems.length === 1 ? 'item' : 'items'} with color "${selectedColor}"`
+                  : `${filteredItems.length} items in collection`}
+                {sortBy === "colorAZ" ? " • Sorted by Color" : ""}
+              </Text>
+              {selectedColor && (
+                <TouchableOpacity
+                  style={styles.activeColorPill}
+                  onPress={() => setSelectedColor(null)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.7}
+                >
                   <View
                     style={[
                       styles.colorFilterDot,
@@ -1059,34 +1082,11 @@ export default function AllWardrobeItemsScreen() {
                       selectedColor.toLowerCase() === "white" && styles.colorDotBorder,
                     ]}
                   />
-                  <Text style={styles.activeColorBannerText}>
-                    {filterOnlyColor ? `Only ${selectedColor}` : `${selectedColor} first`}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => setSelectedColor(null)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="close-circle" size={14} color={colors.primaryDark} />
-                  </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.filterModeToggle, filterOnlyColor && styles.filterModeToggleActive]}
-                  onPress={() => setFilterOnlyColor(!filterOnlyColor)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={filterOnlyColor ? "funnel" : "funnel-outline"}
-                    size={11}
-                    color={filterOnlyColor ? "#FFFFFF" : colors.primaryDark}
-                    style={{ marginRight: 3 }}
-                  />
-                  <Text style={[styles.filterModeToggleText, filterOnlyColor && styles.filterModeToggleTextActive]}>
-                    {filterOnlyColor ? "Show all" : "Only this color"}
-                  </Text>
+                  <Text style={styles.activeColorBannerText}>Color: {selectedColor}</Text>
+                  <Ionicons name="close-circle" size={15} color={colors.primaryDark} />
                 </TouchableOpacity>
-              </View>
-            )}
+              )}
+            </View>
           </View>
 
           {/* ========== ITEMS LIST ========== */}
@@ -1820,27 +1820,12 @@ const createStyles = (colors: any) =>
       borderWidth: 2,
       borderColor: colors.primary,
     },
-    filterModeToggle: {
+    resultsRow: {
       flexDirection: "row",
+      justifyContent: "space-between",
       alignItems: "center",
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.primary,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 14,
-    },
-    filterModeToggleActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    filterModeToggleText: {
-      fontSize: 11,
-      fontWeight: "600",
-      color: colors.primaryDark,
-    },
-    filterModeToggleTextActive: {
-      color: "#FFFFFF",
+      flexWrap: "wrap",
+      gap: 8,
     },
     categoryCountText: {
       color: "#FFFFFF",
