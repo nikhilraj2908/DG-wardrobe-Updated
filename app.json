@@ -1,48 +1,51 @@
 {
   "expo": {
-    "name": "MyFirstApp",
-    "slug": "MyFirstApp",
+    "name": "DigiWardrobe",
+    "slug": "digiwardrobe",
     "owner": "nikhilraj2908",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/DW_logo_A855F7.png",  
-    "scheme": "myfirstapp",
+    "icon": "./assets/images/icon.png",
+    "scheme": "digiwardrobe",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
+      "package": "com.nikhil.digiwardrobe",
+      "versionCode": 1,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "monochromeImage": "./assets/images/android-icon-monochrome.png",
+        "backgroundColor": "#7C3AED"
       },
-      "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/DW_logo_A855F7.png",  
+          "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
-          "resizeMode": "contain",  
-          "backgroundColor": "#ffffff",  
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
           "dark": {
-            "backgroundColor": "#000000" 
+            "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you add clothing items to your wardrobe.",
+          "cameraPermission": "The app accesses your camera to let you take photos of your clothes."
+        }
       ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
+    ]
   }
 }
