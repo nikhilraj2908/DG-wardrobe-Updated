@@ -22,7 +22,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import api from "../../api/api";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface WardrobeItem {
   _id: string;
@@ -66,6 +65,9 @@ const CATEGORY_ICONS = {
     poloshirts: require("../../assets/categories/mens/PoloShirts.png"),
     raincoats: require("../../assets/categories/mens/Raincoats.png"),
     sherwanis: require("../../assets/categories/mens/Sherwanis.png"),
+    shoes: require("../../assets/categories/mens/Shoes.png"),
+    footwear: require("../../assets/categories/mens/Shoes.png"),
+    sneakers: require("../../assets/categories/mens/Shoes.png"),
     shorts: require("../../assets/categories/mens/Shorts.png"),
     socks: require("../../assets/categories/mens/Socks.png"),
     sportswear: require("../../assets/categories/mens/Sportswear.png"),
@@ -116,6 +118,10 @@ const CATEGORY_ICONS = {
     salwarsuits: require("../../assets/categories/womens/SalwarSuit.png"),
     sarees: require("../../assets/categories/womens/Saree.png"),
     shirts: require("../../assets/categories/womens/Shirt.png"),
+    shoes: require("../../assets/categories/womens/Shoes.png"),
+    footwear: require("../../assets/categories/womens/Shoes.png"),
+    sneakers: require("../../assets/categories/womens/Shoes.png"),
+    heels: require("../../assets/categories/womens/Shoes.png"),
     socks: require("../../assets/categories/womens/Socks.png"),
     shorts: require("../../assets/categories/womens/Shorts.png"),
     sportswear: require("../../assets/categories/womens/SportsWear.png"),
@@ -1954,7 +1960,7 @@ const createStyles = (colors: any) =>
       shadowRadius: 4,
       elevation: 3,
       borderWidth: 2,
-borderColor: "transparent",
+      borderColor: "transparent",
 
     },
     gridImageContainer: {
@@ -2035,7 +2041,7 @@ borderColor: "transparent",
       shadowRadius: 3,
       elevation: 2,
       borderWidth: 2,
-borderColor: "transparent",
+      borderColor: "transparent",
     },
     listImage: {
       width: 80,

@@ -13,6 +13,39 @@ interface Props {
   onSort?: (type: "worth" | "alpha" | "views") => void;
 }
 
+interface FilterBtnProps {
+  label: string;
+  icon: any;
+  active?: boolean;
+  onPress: () => void;
+  styles: any;
+  textColor: string;
+}
+
+const FilterBtn = ({
+  label,
+  icon,
+  active,
+  onPress,
+  styles,
+  textColor,
+}: FilterBtnProps) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={[styles.filterBtn, active && styles.filterActive]}
+    activeOpacity={0.8}
+  >
+    <Ionicons
+      name={icon}
+      size={16}
+      color={active ? "#FFFFFF" : textColor}
+    />
+    <Text style={[styles.filterText, active && styles.filterTextActive]}>
+      {label}
+    </Text>
+  </TouchableOpacity>
+);
+
 export default function WardrobeHeader({
   title,
   onBack,
@@ -25,34 +58,6 @@ export default function WardrobeHeader({
   const { theme } = useTheme();
   const colors = theme.colors;
   const styles = React.useMemo(() => createStyles(colors), [colors]);
-
-  // Move FilterBtn inside to access styles
-  const FilterBtn = ({
-    label,
-    icon,
-    active,
-    onPress,
-  }: {
-    label: string;
-    icon: any;
-    active?: boolean;
-    onPress: () => void;
-  }) => (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.filterBtn, active && styles.filterActive]}
-      activeOpacity={0.8}
-    >
-      <Ionicons
-        name={icon}
-        size={16}
-        color={active ? "#FFFFFF" : colors.textPrimary}
-      />
-      <Text style={[styles.filterText, active && styles.filterTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.wrapper}>
@@ -80,18 +85,24 @@ export default function WardrobeHeader({
             icon="cash-outline"
             active={activeSort === "worth"}
             onPress={() => onSort("worth")}
+            styles={styles}
+            textColor={colors.textPrimary}
           />
           <FilterBtn
             label="A–Z"
             icon="text-outline"
             active={activeSort === "alpha"}
             onPress={() => onSort("alpha")}
+            styles={styles}
+            textColor={colors.textPrimary}
           />
           <FilterBtn
             label="Views"
             icon="eye-outline"
             active={activeSort === "views"}
             onPress={() => onSort("views")}
+            styles={styles}
+            textColor={colors.textPrimary}
           />
         </View>
       )}

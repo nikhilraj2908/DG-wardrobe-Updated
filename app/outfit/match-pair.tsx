@@ -681,19 +681,6 @@ export default function MatchPairScreen() {
             <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
               {canvasGarments.length > 0 && (
                 <TouchableOpacity
-                  onPress={() => handleShareCurrentComboToStory(existingOutfitId || undefined, outfitName || "Matched Pair")}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={[styles.storyShareBtn, { backgroundColor: colors.primary }]}
-                >
-                  <Image
-                    source={require("../../assets/icons/share.png")}
-                    style={{ width: 17, height: 17, resizeMode: "contain", tintColor: "#FFFFFF" }}
-                  />
-                </TouchableOpacity>
-              )}
-
-              {canvasGarments.length > 0 && (
-                <TouchableOpacity
                   onPress={handleClearCanvas}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   style={styles.clearBtn}
@@ -1130,13 +1117,6 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     padding: 6,
-  },
-  storyShareBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: "center",
-    alignItems: "center",
   },
   saveBtn: {
     flexDirection: "row",

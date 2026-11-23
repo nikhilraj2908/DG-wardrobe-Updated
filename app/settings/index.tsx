@@ -2,14 +2,14 @@ import AppBackground from "@/components/AppBackground";
 import WardrobeHeader from "@/components/WardrobeHeader";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/app/theme/ThemeContext";
 import { useEffect, useMemo, useState } from "react";
 import api from "@/api/api";
 
-const settingsPage = () => {
+const SettingsPage = () => {
     const { logout } = useAuth();
     const { theme } = useTheme();
     const colors = theme.colors;
@@ -223,4 +223,4 @@ const createStyles = (colors: any) =>
         },
     });
 
-export default settingsPage;
+export default SettingsPage;

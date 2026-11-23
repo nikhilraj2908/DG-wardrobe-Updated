@@ -35,16 +35,16 @@ interface Category {
 }
 
 // Default categories as fallback
-const DEFAULT_CATEGORIES = {
+const DEFAULT_CATEGORIES: { mens: string[]; womens: string[] } = {
     mens: [
-        "T-Shirts", "Shirts", "Jeans", "Trousers", "Shorts", "Jackets", "Blazers",
+        "T-Shirts", "Shirts", "Jeans", "Trousers", "Shorts", "Shoes", "Socks", "Jackets", "Blazers",
         "Sweaters", "Hoodies", "Suits", "Formal Wear", "Casual Wear", "Sportswear",
-        "Underwear", "Socks", "Pajamas", "Swimwear", "Coats", "Raincoats", "Vests",
+        "Underwear", "Pajamas", "Swimwear", "Coats", "Raincoats", "Vests", "Accessories",
     ],
     womens: [
-        "Tops", "Blouses", "T-Shirts", "Shirts", "Jeans", "Trousers", "Leggings",
+        "Tops", "Blouses", "T-Shirts", "Shirts", "Jeans", "Trousers", "Leggings", "Shoes", "Socks",
         "Skirts", "Dresses", "Gowns", "Jackets", "Blazers", "Sweaters", "Cardigans",
-        "Hoodies", "Suits", "Formal Wear", "Casual Wear", "Sportswear", "Lingerie",
+        "Hoodies", "Suits", "Formal Wear", "Casual Wear", "Sportswear", "Lingerie", "Accessories",
     ]
 };
 
@@ -85,6 +85,9 @@ const CATEGORY_ICONS = {
         poloshirts: require("../../assets/categories/mens/PoloShirts.png"),
         raincoats: require("../../assets/categories/mens/Raincoats.png"),
         sherwanis: require("../../assets/categories/mens/Sherwanis.png"),
+        shoes: require("../../assets/categories/mens/Shoes.png"),
+        footwear: require("../../assets/categories/mens/Shoes.png"),
+        sneakers: require("../../assets/categories/mens/Shoes.png"),
         shorts: require("../../assets/categories/mens/Shorts.png"),
         socks: require("../../assets/categories/mens/Socks.png"),
         sportswear: require("../../assets/categories/mens/Sportswear.png"),
@@ -135,6 +138,10 @@ const CATEGORY_ICONS = {
         salwarsuits: require("../../assets/categories/womens/SalwarSuit.png"),
         sarees: require("../../assets/categories/womens/Saree.png"),
         shirts: require("../../assets/categories/womens/Shirt.png"),
+        shoes: require("../../assets/categories/womens/Shoes.png"),
+        footwear: require("../../assets/categories/womens/Shoes.png"),
+        sneakers: require("../../assets/categories/womens/Shoes.png"),
+        heels: require("../../assets/categories/womens/Shoes.png"),
         socks: require("../../assets/categories/womens/Socks.png"),
         shorts: require("../../assets/categories/womens/Shorts.png"),
         sportswear: require("../../assets/categories/womens/SportsWear.png"),
@@ -155,6 +162,12 @@ const CATEGORY_ICONS = {
 
 const normalizeCategoryKey = (name: string) =>
     name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const normalizeImageUrl = (path: string) => {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `https://digiwardrobe.s3.ap-south-1.amazonaws.com/${path}`;
+};
 
 export default function AddWardrobe() {
     const router = useRouter();
@@ -203,6 +216,23 @@ export default function AddWardrobe() {
 
     const isEdit = mode === "edit" && !!itemId;
 
+    const resetForm = useCallback(() => {
+        setImages([]);
+        setCategory("");
+        setCustomCategory("");
+        setCategoryType("unisex");
+        setWardrobe("");
+        setCustomWardrobe("");
+        setPrice("");
+        setBrand("");
+        setColor("");
+        setDescription("");
+        setVisibility("private");
+        setShowOtherCategoryInput(false);
+        setShowOtherWardrobeInput(false);
+        setSearchQuery("");
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
             const targetWardrobe = (params.wardrobeName as string) || (params.wardrobe as string);
@@ -215,7 +245,7 @@ export default function AddWardrobe() {
                     resetForm();
                 }
             };
-        }, [isEdit, params.wardrobeName, params.wardrobe])
+        }, [isEdit, params.wardrobeName, params.wardrobe, resetForm])
     );
 
     useEffect(() => {
@@ -320,12 +350,57 @@ export default function AddWardrobe() {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
             ]);
-            setExploreCategories(exploreRes.data || []);
-            setUserCategories(userRes.data || []);
-            setFilteredCategories([
-                ...(exploreRes.data || []),
-                ...(userRes.data || []),
-            ]);
+            const serverExplore: Category[] = exploreRes.data || [];
+            const serverUser: Category[] = userRes.data || [];
+
+            // Existing category keys in lowercase: "name_type"
+            const existingKeys = new Set(
+                [...serverExplore, ...serverUser].map(c => `${c.name.trim().toLowerCase()}_${c.type}`)
+            );
+
+            // Ensure core categories like Shoes and Socks are always available
+            const missingDefaults: Category[] = [];
+            for (const name of DEFAULT_CATEGORIES.mens) {
+                const key = `${name.trim().toLowerCase()}_mens`;
+                if (!existingKeys.has(key)) {
+                    missingDefaults.push({
+                        _id: `default-mens-${name.toLowerCase().replace(/\s+/g, "-")}`,
+                        name,
+                        type: "mens",
+                    });
+                }
+            }
+            for (const name of DEFAULT_CATEGORIES.womens) {
+                const key = `${name.trim().toLowerCase()}_womens`;
+                if (!existingKeys.has(key)) {
+                    missingDefaults.push({
+                        _id: `default-womens-${name.toLowerCase().replace(/\s+/g, "-")}`,
+                        name,
+                        type: "womens",
+                    });
+                }
+            }
+
+            const combinedExplore = [...serverExplore, ...missingDefaults];
+            setExploreCategories(combinedExplore);
+            setUserCategories(serverUser);
+            setFilteredCategories([...combinedExplore, ...serverUser]);
+
+            // Auto-register Shoes on backend if missing so backend database gets permanent ObjectId
+            if (token) {
+                if (!existingKeys.has("shoes_mens")) {
+                    api.post("/api/categories", { name: "Shoes", type: "mens" }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+                }
+                if (!existingKeys.has("shoes_womens")) {
+                    api.post("/api/categories", { name: "Shoes", type: "womens" }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+                }
+                if (!existingKeys.has("socks_mens")) {
+                    api.post("/api/categories", { name: "Socks", type: "mens" }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+                }
+                if (!existingKeys.has("socks_womens")) {
+                    api.post("/api/categories", { name: "Socks", type: "womens" }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+                }
+            }
         } catch (err) {
             console.error("FETCH CATEGORY ERROR:", err);
         } finally {
@@ -472,11 +547,6 @@ export default function AddWardrobe() {
         );
     };
 
-    useEffect(() => {
-        fetchUserWardrobes();
-        fetchCategories();
-    }, []);
-
     const fetchUserWardrobes = async () => {
         try {
             setLoadingWardrobes(true);
@@ -495,6 +565,11 @@ export default function AddWardrobe() {
             setLoadingWardrobes(false);
         }
     };
+
+    useEffect(() => {
+        fetchUserWardrobes();
+        fetchCategories();
+    }, []);
 
     const handleSearch = (query: string) => {
         setSearchQuery(query);
@@ -549,12 +624,6 @@ export default function AddWardrobe() {
         }
     };
 
-    const normalizeImageUrl = (path: string) => {
-        if (!path) return "";
-        if (path.startsWith("http")) return path;
-        return `https://digiwardrobe.s3.ap-south-1.amazonaws.com/${path}`;
-    };
-
     const pickFromCamera = async () => {
         try {
             if (images.length >= 5) {
@@ -581,23 +650,6 @@ export default function AddWardrobe() {
                 console.log("Camera error:", err);
             }
         }
-    };
-
-    const resetForm = () => {
-        setImages([]);
-        setCategory("");
-        setCustomCategory("");
-        setCategoryType("unisex");
-        setWardrobe("");
-        setCustomWardrobe("");
-        setPrice("");
-        setBrand("");
-        setColor("");
-        setDescription("");
-        setVisibility("private");
-        setShowOtherCategoryInput(false);
-        setShowOtherWardrobeInput(false);
-        setSearchQuery("");
     };
 
     const handleCategorySelect = (item: Category | "other") => {
@@ -633,6 +685,13 @@ export default function AddWardrobe() {
             const resolvedCategory = await createNewCategory(customCategory, categoryType);
             if (!resolvedCategory) return;
             activeCategory = resolvedCategory;
+        } else if (activeCategory?._id && activeCategory._id.startsWith("default-")) {
+            // Ensure default categories like Shoes have a real MongoDB ObjectId on the backend
+            const resolvedCategory = await createNewCategory(activeCategory.name, activeCategory.type);
+            if (resolvedCategory) {
+                activeCategory = resolvedCategory;
+                setSelectedCategory(resolvedCategory);
+            }
         }
         const finalWardrobe = showOtherWardrobeInput && customWardrobe ? customWardrobe : wardrobe;
         if (images.length === 0 || !activeCategory || !finalWardrobe) {

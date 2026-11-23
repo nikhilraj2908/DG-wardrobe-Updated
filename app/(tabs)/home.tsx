@@ -52,6 +52,27 @@ interface FeedItem {
   stats?: CollectionStats;
 }
 
+/* ================= HELPERS ================= */
+function injectCollections(posts: FeedItem[], collections: FeedItem[]) {
+  if (!collections.length) return posts;
+
+  const existingIds = new Set(posts.map(p => p._id));
+  const result = [...posts];
+
+  let insertIndex = 2;
+
+  collections.forEach((collection) => {
+    if (!existingIds.has(collection._id)) {
+      if (insertIndex < result.length) {
+        result.splice(insertIndex, 0, collection);
+        insertIndex += 4;
+      }
+    }
+  });
+
+  return result;
+}
+
 /* ================= COMPONENT ================= */
 export default function HomeScreen() {
   const { theme } = useTheme();                         // <-- get current theme
@@ -73,36 +94,7 @@ export default function HomeScreen() {
 
   const LIMIT = 6;
 
-  const API_URL = "https://api.digiwardrobe.com";
-
-  /* ================= REFRESH ================= */
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    setHasMore(true);
-    await Promise.allSettled([
-      loadFeed(true),
-      loadStories(),
-      loadNotificationsCount(),
-    ]);
-    setRefreshing(false);
-  };
-
-  useEffect(() => {
-    const unsubscribe = onHomeTabPress(() => {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-      handleRefresh();
-    });
-
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    loadFeed(true);
-    loadStories();
-    loadMe();
-    loadNotificationsCount();
-  }, []);
-
+  /* ================= DATA FETCHING ================= */
   const loadStories = async () => {
     try {
       const token = await storage.getItem("token");
@@ -199,6 +191,33 @@ export default function HomeScreen() {
     }
   };
 
+  /* ================= REFRESH ================= */
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setHasMore(true);
+    await Promise.allSettled([
+      loadFeed(true),
+      loadStories(),
+      loadNotificationsCount(),
+    ]);
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    const unsubscribe = onHomeTabPress(() => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      handleRefresh();
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    loadFeed(true);
+    loadStories();
+    loadMe();
+    loadNotificationsCount();
+  }, []);
 
   /* ================= RENDER POST ================= */
   const renderPost = ({ item }: { item: FeedItem }) => {
@@ -364,27 +383,6 @@ export default function HomeScreen() {
       />
     </AppBackground>
   );
-}
-
-/* ================= HELPERS ================= */
-function injectCollections(posts: FeedItem[], collections: FeedItem[]) {
-  if (!collections.length) return posts;
-
-  const existingIds = new Set(posts.map(p => p._id));
-  const result = [...posts];
-
-  let insertIndex = 2;
-
-  collections.forEach((collection) => {
-    if (!existingIds.has(collection._id)) {
-      if (insertIndex < result.length) {
-        result.splice(insertIndex, 0, collection);
-        insertIndex += 4;
-      }
-    }
-  });
-
-  return result;
 }
 
 /* ================= STYLES ================= */

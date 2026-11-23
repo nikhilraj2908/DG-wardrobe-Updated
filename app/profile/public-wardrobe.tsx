@@ -1,10 +1,9 @@
 import AppBackground from "@/components/AppBackground";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { storage } from "@/utils/storage";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import {  useMemo, useState } from "react";
 import { useCallback } from "react";
 import {
   ActivityIndicator,
@@ -65,6 +64,9 @@ const CATEGORY_ICONS = {
     poloshirts: require("../../assets/categories/mens/PoloShirts.png"),
     raincoats: require("../../assets/categories/mens/Raincoats.png"),
     sherwanis: require("../../assets/categories/mens/Sherwanis.png"),
+    shoes: require("../../assets/categories/mens/Shoes.png"),
+    footwear: require("../../assets/categories/mens/Shoes.png"),
+    sneakers: require("../../assets/categories/mens/Shoes.png"),
     shorts: require("../../assets/categories/mens/Shorts.png"),
     socks: require("../../assets/categories/mens/Socks.png"),
     sportswear: require("../../assets/categories/mens/Sportswear.png"),
@@ -116,6 +118,10 @@ const CATEGORY_ICONS = {
     salwarsuits: require("../../assets/categories/womens/SalwarSuit.png"),
     sarees: require("../../assets/categories/womens/Saree.png"),
     shirts: require("../../assets/categories/womens/Shirt.png"),
+    shoes: require("../../assets/categories/womens/Shoes.png"),
+    footwear: require("../../assets/categories/womens/Shoes.png"),
+    sneakers: require("../../assets/categories/womens/Shoes.png"),
+    heels: require("../../assets/categories/womens/Shoes.png"),
     socks: require("../../assets/categories/womens/Socks.png"),
     shorts: require("../../assets/categories/womens/Shorts.png"),
     sportswear: require("../../assets/categories/womens/SportsWear.png"),

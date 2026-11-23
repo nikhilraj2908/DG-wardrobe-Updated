@@ -2,17 +2,18 @@ import 'dotenv/config';
 
 export default ({ config }) => ({
   ...config,
-  name: "DG Wardrobe",
-  slug: "YourDigiCloset",
-  version: "1.0.0",
-  scheme: "mydgwardrobe",
-  icon: "./assets/images/DW_logo_A855F7.png",
+  name: config.name || "DigiWardrobe",
+  slug: config.slug || "digiwardrobe",
+  version: config.version || "1.0.0",
+  scheme: config.scheme || "digiwardrobe",
+  icon: config.icon || "./assets/images/icon.png",
 
   android: {
     ...config?.android,
-    package: "com.yourdgwardrobe.app",
+    package: config.android?.package || "com.nikhil.digiwardrobe",
     usesCleartextTraffic: true,
     permissions: [
+      "CAMERA",
       "INTERNET",
       "VIBRATE",
       "READ_EXTERNAL_STORAGE",
@@ -22,12 +23,12 @@ export default ({ config }) => ({
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
-      backgroundColor: "#E6F4FE"
+      backgroundColor: "#7C3AED"
     },
     intentFilters: [
       {
         action: "VIEW",
-        data: [{ scheme: "mydgwardrobe" }],
+        data: [{ scheme: config.scheme || "digiwardrobe" }],
         category: ["BROWSABLE", "DEFAULT"],
       },
     ],
@@ -35,7 +36,7 @@ export default ({ config }) => ({
 
   ios: {
     ...config?.ios,
-    bundleIdentifier: "com.yourdgwardrobe.app",
+    bundleIdentifier: config.android?.package || "com.nikhil.digiwardrobe",
   },
 
   extra: {

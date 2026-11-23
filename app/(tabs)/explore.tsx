@@ -1,6 +1,5 @@
 import WardrobeHeader from "@/components/WardrobeHeader";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { storage } from "@/utils/storage";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -34,7 +33,7 @@ interface CategoryItem {
   _id: string;
   name: string;
   type: "mens" | "womens" | "unisex";
-  icon: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap;
   image?: string;
   description?: string;
   itemCount?: number;
@@ -103,6 +102,9 @@ const mensCategoryImages = {
   "poloshirts": require("../../assets/categories/mens-category/PoloShirts.png"),
   "lifestyle": require("../../assets/categories/mens-category/Lifestyle.png"),
   "casualwears": require("../../assets/categories/mens-category/CasualWear.png"),
+  "shoes": require("../../assets/categories/mens-category/Shoes.png"),
+  "footwear": require("../../assets/categories/mens-category/Shoes.png"),
+  "sneakers": require("../../assets/categories/mens-category/Shoes.png"),
   "socks": require("../../assets/categories/mens-category/Socks.png"),
   "suits": require("../../assets/categories/mens-category/Suits.png"),
   "swimwear": require("../../assets/categories/mens-category/Swimwear.png"),
@@ -156,6 +158,10 @@ const womensCategoryImages = {
   "pajamas": require("../../assets/categories/womens-category/Pajamas.png"),
   "palazzos": require("../../assets/categories/womens-category/Palazzos.png"),
   "sarees": require("../../assets/categories/womens-category/Sarees.png"),
+  "shoes": require("../../assets/categories/womens-category/Shoes.png"),
+  "footwear": require("../../assets/categories/womens-category/Shoes.png"),
+  "sneakers": require("../../assets/categories/womens-category/Shoes.png"),
+  "heels": require("../../assets/categories/womens-category/Shoes.png"),
   "socks": require("../../assets/categories/womens-category/Socks.png"),
   "rompers": require("../../assets/categories/womens-category/Rompers.png"),
   "suits": require("../../assets/categories/womens-category/Rompers.png"),
@@ -192,7 +198,12 @@ const categoryNameMapping: Record<string, string> = {
   "Bikinis": "Bikini",
   "tops": "tops",
   "shoes": "shoes",
+  "shoe": "shoes",
   "footwear": "shoes",
+  "sneakers": "shoes",
+  "heels": "shoes",
+  "socks": "socks",
+  "sock": "socks",
   "bags": "bags",
   "Capris": "Capris",
   "handbags": "bags",
@@ -348,7 +359,8 @@ const [activeCategoryName, setActiveCategoryName] = useState<string | null>(null
   const [searchResults, setSearchResults] = useState<{
     categories: CategoryItem[];
     users: SearchUser[];
-  }>({ categories: [], users: [] });
+    items: ExploreItem[];
+  }>({ categories: [], users: [], items: [] });
   const { q } = useLocalSearchParams<{ q?: string }>();
   const searchTimeoutRef = useRef<any>(null);
   const { toggleSave, savedItemIds } = useSavedItems();
@@ -371,14 +383,35 @@ const [activeCategoryName, setActiveCategoryName] = useState<string | null>(null
   const fetchCategories = async () => {
     try {
       const res = await api.get("/api/categories");
-      const allCategories = res.data || [];
+      const allCategories: CategoryItem[] = res.data || [];
 
-      const filtered = allCategories.filter((cat: CategoryItem) => {
+      // Ensure core categories like Shoes and Socks are present
+      const existingKeys = new Set(
+        allCategories.map((c: CategoryItem) => `${c.name.trim().toLowerCase()}_${c.type}`)
+      );
+
+      const defaultsToAdd: CategoryItem[] = [];
+      if (!existingKeys.has("shoes_mens")) {
+        defaultsToAdd.push({ _id: "default-shoes-mens", name: "Shoes", type: "mens" });
+      }
+      if (!existingKeys.has("shoes_womens")) {
+        defaultsToAdd.push({ _id: "default-shoes-womens", name: "Shoes", type: "womens" });
+      }
+      if (!existingKeys.has("socks_mens")) {
+        defaultsToAdd.push({ _id: "default-socks-mens", name: "Socks", type: "mens" });
+      }
+      if (!existingKeys.has("socks_womens")) {
+        defaultsToAdd.push({ _id: "default-socks-womens", name: "Socks", type: "womens" });
+      }
+
+      const mergedCategories = [...allCategories, ...defaultsToAdd];
+
+      const filtered = mergedCategories.filter((cat: CategoryItem) => {
         if (selectedGender === "unisex") return true;
         return cat.type === selectedGender || cat.type === "unisex";
       });
 
-      setCategories(allCategories);
+      setCategories(mergedCategories);
       setFilteredCategories(filtered);
     } catch (err) {
       console.log("Category fetch error", err);
@@ -421,12 +454,30 @@ const [activeCategoryName, setActiveCategoryName] = useState<string | null>(null
       page: pageNum,
       limit: 20,
       sort: sortBy,
-      category: categoryId,
     };
-    // No gender parameter – the category ID already ensures correct items
+
+    if (categoryId && !categoryId.startsWith("default-")) {
+      params.category = categoryId;
+    } else {
+      params.search = activeCategoryName || "Shoes";
+    }
 
     const res = await api.get("/api/wardrobe/explore", { params });
-    const newItems = res.data?.items || res.data || [];
+    let newItems = res.data?.items || res.data || [];
+
+    // Fallback: if categoryId returned 0 items, also try searching by category name
+    if (newItems.length === 0 && params.category && activeCategoryName) {
+      try {
+        const fallbackRes = await api.get("/api/wardrobe/explore", {
+          params: { page: pageNum, limit: 20, sort: sortBy, search: activeCategoryName },
+        });
+        const fallbackItems = fallbackRes.data?.items || fallbackRes.data || [];
+        if (fallbackItems.length > 0) {
+          newItems = fallbackItems;
+        }
+      } catch (_) {}
+    }
+
     const total = res.data?.total || newItems.length;
 
     setTotalItems(total);
@@ -786,6 +837,15 @@ useEffect(() => {
             value={search}
             onChangeText={handleSearchChange}
             returnKeyType="search"
+            onSubmitEditing={() => {
+              if (searchResults.items && searchResults.items.length > 0) {
+                setMode("items");
+                setItems(searchResults.items);
+                setTotalItems(searchResults.items.length);
+                setActiveCategory(search.trim());
+                setIsSearching(false);
+              }
+            }}
           />
           {search.trim() ? (
             <TouchableOpacity onPress={clearSearch}>
@@ -964,19 +1024,69 @@ useEffect(() => {
           </View>
         )}
 
+        {/* Items Section */}
+        {searchResults.items && searchResults.items.length > 0 && (
+          <View style={styles.searchSection}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Text style={styles.searchSectionTitle}>Items ({searchResults.items.length})</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setMode("items");
+                  setItems(searchResults.items);
+                  setTotalItems(searchResults.items.length);
+                  setActiveCategory(search.trim());
+                  setIsSearching(false);
+                }}
+              >
+                <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 13 }}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.categoriesGrid}>
+              {searchResults.items.slice(0, 6).map((item) => {
+                const rawPath = item.images?.length && item.images[0] ? item.images[0] : item.imageUrl;
+                const imageUrl = resolveImageUrl(rawPath);
+                return (
+                  <TouchableOpacity
+                    key={item._id}
+                    style={styles.searchCategoryCard}
+                    onPress={() => {
+                      router.push({
+                        pathname: "/wardrobe/item/[id]",
+                        params: { id: item._id, from: "explore" },
+                      });
+                    }}
+                    activeOpacity={0.9}
+                  >
+                    <Image
+                      source={imageUrl ? { uri: imageUrl } : require("../../assets/images/icon.png")}
+                      style={styles.searchCategoryImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.searchCategoryOverlay}>
+                      <Text style={styles.searchCategoryTitle} numberOfLines={1}>
+                        {item.brand ? `${item.brand} • ` : ""}{item.category?.name || item.title || "Item"}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         {/* No Results */}
-        {search.trim() && searchResults.categories.length === 0 && searchResults.users.length === 0 && (
+        {search.trim() && searchResults.categories.length === 0 && searchResults.users.length === 0 && (!searchResults.items || searchResults.items.length === 0) && (
           <View style={styles.noResultsContainer}>
             <Ionicons name="search-outline" size={48} color="#E5E7EB" />
-            <Text style={styles.noResultsText}>No results found for "{search}"</Text>
+            <Text style={styles.noResultsText}>No results found for &quot;{search}&quot;</Text>
           </View>
         )}
       </View>
     );
   };
 
-  // Masonry List Component
-  const MasonryList = ({
+  // Masonry List Render Helper
+  const renderMasonryList = ({
     data,
     renderItem,
     keyExtractor,
@@ -1112,7 +1222,7 @@ useEffect(() => {
         performSearch(text);
       }, 300);
     } else {
-      setSearchResults({ categories: [], users: [] });
+      setSearchResults({ categories: [], users: [], items: [] });
     }
   };
 
@@ -1134,7 +1244,7 @@ useEffect(() => {
         category.name.toLowerCase().includes(lower)
       );
 
-      // 3️⃣ Search items (ONLY to detect brand match)
+      // 3️⃣ Search items
       const itemRes = await api.get("/api/wardrobe/explore", {
         params: {
           search: trimmed,
@@ -1145,7 +1255,7 @@ useEffect(() => {
 
       const foundItems: ExploreItem[] = itemRes.data?.items || [];
 
-      // 4️⃣ 🔥 BRAND MATCH LOGIC (NEW)
+      // 4️⃣ Brand match logic
       const matchedBrandItems = foundItems.filter(
         item => item.brand?.toLowerCase() === lower
       );
@@ -1159,24 +1269,33 @@ useEffect(() => {
         return;
       }
 
-      // 5️⃣ Otherwise → normal search behaviour
+      // 5️⃣ If only items match (no categories or users), go directly to items view
+      if (filteredCategories.length === 0 && users.length === 0 && foundItems.length > 0) {
+        setMode("items");
+        setItems(foundItems);
+        setTotalItems(itemRes.data?.total || foundItems.length);
+        setActiveCategory(trimmed);
+        return;
+      }
+
+      // 6️⃣ Otherwise → normal search behaviour with categories, items & users
       setMode("categories");
       setSearchResults({
         categories: filteredCategories,
         users,
+        items: foundItems,
       });
 
     } catch (err) {
       console.error("Search error:", err);
-      setSearchResults({ categories: [], users: [] });
+      setSearchResults({ categories: [], users: [], items: [] });
     }
   };
-
 
   const clearSearch = () => {
     setSearch("");
     setIsSearching(false);
-    setSearchResults({ categories: [], users: [] });
+    setSearchResults({ categories: [], users: [], items: [] });
   };
 
   return (
@@ -1211,22 +1330,22 @@ useEffect(() => {
                 {renderSearchResults()}
               </ScrollView>
             ) : (
-              <MasonryList
-                data={filteredCategories}
-                renderItem={renderCategoryCard}
-                keyExtractor={(item: CategoryItem) => item._id}
-                isCategories={true}
-              />
+              renderMasonryList({
+                data: filteredCategories,
+                renderItem: renderCategoryCard,
+                keyExtractor: (item: CategoryItem) => item._id,
+                isCategories: true,
+              })
             )}
           </>
         ) : (
           <>
             {renderItemsHeader()}
-            <MasonryList
-              data={items}
-              renderItem={renderItemCard}
-              keyExtractor={(item: ExploreItem) => item._id}
-            />
+            {renderMasonryList({
+              data: items,
+              renderItem: renderItemCard,
+              keyExtractor: (item: ExploreItem) => item._id,
+            })}
           </>
         )}
 

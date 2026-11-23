@@ -3,7 +3,7 @@ import AppBackground from "@/components/AppBackground";
 import { Ionicons } from "@expo/vector-icons";
 import { storage } from "@/utils/storage";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
