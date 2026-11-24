@@ -45,9 +45,9 @@ export default function BlockedUsersScreen() {
         if (Array.isArray(parsed)) {
           parsed.forEach((u: any) => {
             if (u && (u.id || u.username)) {
-              const key = u.id || u.username;
+              const key = String(u.id || u.username);
               userMap.set(key, {
-                id: u.id || key,
+                id: String(u.id || key),
                 username: u.username || "User",
                 photo: u.photo,
                 blockedAt: u.blockedAt || new Date().toISOString(),
@@ -57,16 +57,33 @@ export default function BlockedUsersScreen() {
         }
       }
 
-      // 2. Try fetching from backend API if available
+      // 2. Fetch from backend API (/api/user/blocked/list)
       try {
-        const res = await api.get("/api/user/blocked");
-        const serverUsers = res.data?.users || res.data?.blockedUsers || res.data || [];
+        let serverUsers: any[] = [];
+        try {
+          const res = await api.get("/api/user/blocked/list");
+          serverUsers = res.data?.users || res.data?.blockedUsers || (Array.isArray(res.data) ? res.data : []);
+        } catch (_) {
+          // Fallback to /api/user/blocked if route variant exists
+          try {
+            const res2 = await api.get("/api/user/blocked");
+            serverUsers = res2.data?.users || res2.data?.blockedUsers || (Array.isArray(res2.data) ? res2.data : []);
+          } catch (__) {}
+        }
+
         if (Array.isArray(serverUsers)) {
           serverUsers.forEach((u: any) => {
-            const key = u._id || u.id || u.username;
-            if (key) {
+            if (typeof u === "string") {
+              // Unpopulated ObjectId string
+              userMap.set(u, {
+                id: u,
+                username: "User",
+                blockedAt: new Date().toISOString(),
+              });
+            } else if (u && (u._id || u.id || u.username)) {
+              const key = String(u._id || u.id || u.username);
               userMap.set(key, {
-                id: u._id || u.id || key,
+                id: String(u._id || u.id || key),
                 username: u.username || "User",
                 photo: u.photo,
                 blockedAt: u.blockedAt || new Date().toISOString(),
@@ -74,8 +91,12 @@ export default function BlockedUsersScreen() {
             }
           });
         }
-      } catch (_) {
-        // Backend endpoint might not exist, local storage is the source of truth
+
+        // 3. Sync full combined list back to local storage
+        const combinedList = Array.from(userMap.values());
+        await storage.setItem("blocked_users_list", JSON.stringify(combinedList));
+      } catch (e) {
+        console.log("Error syncing backend blocked users:", e);
       }
 
       setBlockedUsers(Array.from(userMap.values()));
@@ -332,3 +353,4 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       lineHeight: 20,
     },
   });
+
