@@ -49,7 +49,7 @@ export default function LoginWithUsername() {
 
     } catch (err) {
       setLoading(false);
-      Alert.alert("Error", err.response?.data?.message || "Login failed");
+      Alert.alert("Error", err.response?.data?.message || err.message || "Login failed");
     }
   };
 
