@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default ({ config }) => ({
   ...config,
   name: config.name || "DigiWardrobe",
-  slug: config.slug || "digiwardrobe",
+  slug: config.slug || "YourDigiCloset",
   version: config.version || "1.0.0",
   scheme: config.scheme || "digiwardrobe",
   icon: config.icon || "./assets/images/icon.png",
