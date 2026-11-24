@@ -79,6 +79,12 @@ export default function HomeScreen() {
   const colors = theme.colors;
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
+  const isFetchingRef = useRef(false);
+  const pageRef = useRef(1);
+  const hasMoreRef = useRef(true);
+  const onEndReachedCalledDuringMomentum = useRef(true);
+  const rateLimitCooldownUntil = useRef(0);
+  const collectionsCache = useRef<FeedItem[]>([]);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -148,19 +154,68 @@ export default function HomeScreen() {
 
   /* ================= LOAD FEED ================= */
   const loadFeed = async (reset = false) => {
-    if ((loading && !reset) || (!hasMore && !reset)) return;
+    // 1. Guard against 429 rate limit cooldown
+    if (Date.now() < rateLimitCooldownUntil.current) {
+      console.log("⏳ Rate-limit cooldown active. Skipping feed request.");
+      return;
+    }
+
+    // 2. Synchronous in-flight lock to prevent duplicate parallel fetches
+    if (isFetchingRef.current) return;
+    if (!reset && !hasMoreRef.current) return;
+
+    isFetchingRef.current = true;
+    if (reset) {
+      pageRef.current = 1;
+      hasMoreRef.current = true;
+    }
+
+    const targetPage = reset ? 1 : pageRef.current;
 
     try {
       setLoading(true);
-      const [publicRes, collectionRes] = await Promise.all([
-        api.get(`/api/feed/public?page=${reset ? 1 : page}&limit=${LIMIT}`),
-        api.get(`/api/feed/collections`),
-      ]);
+
+      const requests: Promise<any>[] = [
+        api.get(`/api/feed/public?page=${targetPage}&limit=${LIMIT}`),
+      ];
+
+      // Only fetch collections on initial load/reset, not on every page pagination
+      if (reset || collectionsCache.current.length === 0) {
+        requests.push(api.get(`/api/feed/collections`).catch(() => ({ data: [] })));
+      }
+
+      const [publicRes, collectionRes] = await Promise.all(requests);
 
       const publicItems: FeedItem[] = publicRes.data?.items || [];
-      const collections: FeedItem[] = collectionRes.data || [];
+      if (collectionRes && Array.isArray(collectionRes.data)) {
+        collectionsCache.current = collectionRes.data;
+      }
+      const collections: FeedItem[] = collectionsCache.current;
 
-      const processedPublic = publicItems.map((item) => ({
+      // Filter out posts from blocked users
+      let blockedIds = new Set<string>();
+      try {
+        const rawBlocked = await storage.getItem("blocked_users_list");
+        if (rawBlocked) {
+          const list = JSON.parse(rawBlocked);
+          if (Array.isArray(list)) {
+            list.forEach((u: any) => {
+              if (u.id) blockedIds.add(String(u.id));
+              if (u.username) blockedIds.add(String(u.username).toLowerCase());
+            });
+          }
+        }
+      } catch (_) {}
+
+      const filteredPublic = publicItems.filter((item) => {
+        const authorId = item.user?._id || (item as any).userId;
+        const authorName = item.user?.username ? String(item.user.username).toLowerCase() : "";
+        if (authorId && blockedIds.has(String(authorId))) return false;
+        if (authorName && blockedIds.has(authorName)) return false;
+        return true;
+      });
+
+      const processedPublic = filteredPublic.map((item) => ({
         ...item,
         images: item.images && item.images.length
           ? item.images
@@ -182,11 +237,24 @@ export default function HomeScreen() {
 
         return Array.from(map.values());
       });
-      setPage((prev) => (reset ? 2 : prev + 1));
-      setHasMore(publicItems.length === LIMIT);
-    } catch (err) {
+
+      const hasMoreItems = publicItems.length === LIMIT;
+      hasMoreRef.current = hasMoreItems;
+      setHasMore(hasMoreItems);
+
+      if (hasMoreItems) {
+        pageRef.current = targetPage + 1;
+        setPage(targetPage + 1);
+      }
+    } catch (err: any) {
       console.error("Feed load error:", err);
+      if (err?.response?.status === 429) {
+        // Enforce 6s cooldown on 429
+        rateLimitCooldownUntil.current = Date.now() + 6000;
+        console.warn("⚠️ HTTP 429 detected. 6s cooldown active.");
+      }
     } finally {
+      isFetchingRef.current = false;
       setLoading(false);
     }
   };
@@ -357,8 +425,16 @@ export default function HomeScreen() {
       keyExtractor={(item) => item._id} 
         renderItem={renderPost}
         ListHeaderComponent={renderHeader}
-        onEndReached={() => loadFeed()}
-        onEndReachedThreshold={0.6}
+        onEndReached={() => {
+          if (!onEndReachedCalledDuringMomentum.current) {
+            loadFeed();
+            onEndReachedCalledDuringMomentum.current = true;
+          }
+        }}
+        onEndReachedThreshold={0.2}
+        onMomentumScrollBegin={() => {
+          onEndReachedCalledDuringMomentum.current = false;
+        }}
         refreshing={refreshing}
         onRefresh={handleRefresh}
         ListFooterComponent={

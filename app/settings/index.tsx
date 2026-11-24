@@ -2,7 +2,7 @@ import AppBackground from "@/components/AppBackground";
 import WardrobeHeader from "@/components/WardrobeHeader";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/app/theme/ThemeContext";
@@ -92,6 +92,20 @@ const SettingsPage = () => {
         );
     };
 
+    const handleContactUs = () => {
+        Linking.openURL("mailto:support@digiwardrobe.com?subject=DigiWardrobe Support & Feedback").catch(() => {
+            Alert.alert("Contact Support", "Please email us at: support@digiwardrobe.com");
+        });
+    };
+
+    const handleNotificationPreferences = () => {
+        Alert.alert(
+            "Notification Preferences",
+            "Push notifications for followers, outfit likes, saves, and premium requests are currently ENABLED.\n\nYou can also manage notification permissions directly in your phone system settings.",
+            [{ text: "OK" }]
+        );
+    };
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top", "bottom"]}>
             <AppBackground>
@@ -121,11 +135,17 @@ const SettingsPage = () => {
                             </TouchableOpacity>
                         )}
 
-                        <TouchableOpacity style={styles.settingOption}>
-                            <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
-                            <Text style={styles.text}>Privacy Settings</Text>
+                        <TouchableOpacity
+                            style={styles.settingOption}
+                            onPress={() => router.push("/blocked-users")}
+                        >
+                            <Ionicons name="ban-outline" size={20} color={colors.primary} />
+                            <Text style={styles.text}>Blocked Accounts</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.settingOption}>
+                        <TouchableOpacity
+                            style={styles.settingOption}
+                            onPress={handleNotificationPreferences}
+                        >
                             <Ionicons name="notifications-outline" size={20} color={colors.primary} />
                             <Text style={styles.text}>Notification Preferences</Text>
                         </TouchableOpacity>
@@ -140,7 +160,7 @@ const SettingsPage = () => {
 
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Support</Text>
-                        <TouchableOpacity style={styles.settingOption}>
+                        <TouchableOpacity style={styles.settingOption} onPress={handleContactUs}>
                             <Ionicons name="mail-outline" size={20} color={colors.primary} />
                             <Text style={styles.text}>Contact Us</Text>
                         </TouchableOpacity>

@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/app/theme/ThemeContext";
 import api from "@/api/api";
+import { storage } from "@/utils/storage";
 
 const REPORT_REASONS = [
   { id: "dont_like", title: "I just don't like it", desc: "Irrelevant or uninteresting content" },
@@ -98,6 +99,17 @@ export default function ReportModal({
             try {
               if (authorId) {
                 await api.post(`/api/user/block/${authorId}`);
+              }
+              // Save to blocked users storage so user can manage & unblock them in Settings
+              const rawBlocked = await storage.getItem("blocked_users_list");
+              const list = rawBlocked ? JSON.parse(rawBlocked) : [];
+              if (!list.some((u: any) => u.id === authorId || (authorUsername && u.username === authorUsername))) {
+                list.push({
+                  id: authorId || String(Date.now()),
+                  username: authorUsername || "user",
+                  blockedAt: new Date().toISOString(),
+                });
+                await storage.setItem("blocked_users_list", JSON.stringify(list));
               }
             } catch (err) {
               console.log("Error blocking user:", err);
