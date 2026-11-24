@@ -9,6 +9,11 @@
     "scheme": ["mydgwardrobe", "digiwardrobe"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#ffffff",
+      "translucent": true
+    },
     "android": {
       "package": "com.nikhil.digiwardrobe",
       "versionCode": 1,

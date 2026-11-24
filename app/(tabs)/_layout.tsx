@@ -15,11 +15,12 @@ import {
 import { router } from "expo-router";
 import { useTheme } from "@/app/theme/ThemeContext";
 import { triggerHomeScrollToTop } from "@/utils/homeScroll";
+import { StatusBar } from "expo-status-bar";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const BASE_BAR_HEIGHT = 60;
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const colors = theme.colors;
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -31,6 +32,7 @@ export default function TabsLayout() {
       style={{ flex: 1, backgroundColor: colors.background }}
       edges={["top"]}
     >
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
       <Tabs
         screenOptions={{
           headerShown: false,

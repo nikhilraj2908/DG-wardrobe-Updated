@@ -2,6 +2,7 @@
 import { Stack } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 export default function AuthLayout() {
   const { isLoading } = useAuth();
@@ -10,6 +11,7 @@ export default function AuthLayout() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <StatusBar style="light" />
         <ActivityIndicator size="large" color="#A855F7" />
       </View>
     );
@@ -17,13 +19,16 @@ export default function AuthLayout() {
 
   // Don't check for isAuthenticated here - let login screen handle it
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="welcome" />
-      <Stack.Screen name="login-username" />
-      <Stack.Screen name="otp-verify" />
-      <Stack.Screen name="signup" />
-      <Stack.Screen name="forgot-password" />
-      <Stack.Screen name="reset-password" />
-    </Stack>
+    <>
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="welcome" />
+        <Stack.Screen name="login-username" />
+        <Stack.Screen name="otp-verify" />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="forgot-password" />
+        <Stack.Screen name="reset-password" />
+      </Stack>
+    </>
   );
 }

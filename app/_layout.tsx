@@ -7,8 +7,14 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SavedItemsProvider } from "../context/SavedItemsContext";
 import { FollowProvider } from "@/context/FollowContext";
 import { AuthProvider } from "../context/AuthContext";
-import { ThemeProvider } from "./theme/ThemeContext";
+import { ThemeProvider, useTheme } from "./theme/ThemeContext";
 import AuthGate from "@/components/AuthGate";
+import { StatusBar } from "expo-status-bar";
+
+function GlobalStatusBar() {
+  const { isDarkMode } = useTheme();
+  return <StatusBar style={isDarkMode ? "light" : "dark"} />;
+}
 
 // Prevent splash screen from auto-hiding until initial fonts & auth are ready
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -43,6 +49,7 @@ export default function RootLayout() {
         <FollowProvider>
           <SavedItemsProvider>
             <ThemeProvider>
+              <GlobalStatusBar />
               <AuthGate>
                 <Slot />
               </AuthGate>
