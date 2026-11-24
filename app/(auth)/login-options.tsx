@@ -7,7 +7,7 @@ import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
 import { useAuthRequest } from "expo-auth-session";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -64,16 +64,21 @@ useEffect(() => {
 }, [request]);
 
 const { setAuthInProgress } = useAuth();
+const hasHandled = useRef(false);
+
 const handleGoogleLogin = async () => {
+  hasHandled.current = false;
   setAuthInProgress(true);
   await promptAsync();
 };
 
 useEffect(() => {
   if (response?.type === "success") {
+    if (hasHandled.current) return;
+    hasHandled.current = true;
     const { code } = response.params;
     if (code) {
-      router.push({
+      router.replace({
         pathname: "/(auth)/callback",
         params: { code },
       });

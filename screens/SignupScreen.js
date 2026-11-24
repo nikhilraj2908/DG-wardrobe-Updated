@@ -5,9 +5,8 @@ import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect } from "react";
 import {
   FlatList,
   Image,
@@ -118,11 +117,15 @@ export default function SignupScreen() {
     savePKCE();
   }, [request]);
 
+  const hasHandled = useRef(false);
+
   useEffect(() => {
     if (response?.type === "success") {
+      if (hasHandled.current) return;
+      hasHandled.current = true;
       const { code } = response.params;
       if (code) {
-        router.push({
+        router.replace({
           pathname: "/(auth)/callback",
           params: { code },
         });
@@ -242,6 +245,7 @@ export default function SignupScreen() {
           <TouchableOpacity
             style={styles.googleBtn}
             onPress={() => {
+              hasHandled.current = false;
               setAuthInProgress(true);
               promptAsync();
             }}

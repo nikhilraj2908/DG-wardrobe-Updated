@@ -88,3 +88,8 @@ export const blueTheme = {
 
 export const lightTheme = theme;
 export const yellowTheme = blueTheme;
+
+export default function ThemeRoute() {
+  return null;
+}
+

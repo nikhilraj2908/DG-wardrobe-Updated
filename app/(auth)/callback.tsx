@@ -4,7 +4,7 @@ import axios from "axios";
 import * as AuthSession from "expo-auth-session";
 import Constants from "expo-constants";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
 
 const extra = Constants.expoConfig?.extra || (Constants.manifest as any)?.extra || {};
@@ -17,27 +17,46 @@ const discovery = {
     tokenEndpoint: `https://${AUTH0_DOMAIN}/oauth/token`,
 };
 
+// Module-level singletons: shared across all mounts/re-renders of Callback
+const processedCodes = new Set<string>();
+let inFlightExchange: Promise<void> | null = null;
+
 export default function Callback() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { login, setAuthInProgress } = useAuth();
-    const hasExchanged = useRef(false);
 
     useEffect(() => {
         const run = async () => {
-            if (hasExchanged.current) return;
-            hasExchanged.current = true;
-            try {
-                setAuthInProgress(true); // Start loading
-                console.log("🔐 Loading... Checking user authentication");
+            const code = String(params.code || "");
+            if (!code) {
+                console.log("❌ No code received, redirecting to welcome");
+                setAuthInProgress(false);
+                router.replace("/(auth)/welcome");
+                return;
+            }
 
-                const code = String(params.code || "");
-                if (!code) {
-                    console.log("❌ No code received, redirecting to welcome");
-                    setAuthInProgress(false);
-                    router.replace("/(auth)/welcome");
-                    return;
+            // 1. If this exact authorization code was already exchanged successfully, ignore
+            if (processedCodes.has(code)) {
+                console.log("🔐 Authorization code already exchanged. Skipping duplicate exchange.");
+                return;
+            }
+
+            // 2. If an exchange is already in progress, wait for it instead of starting a second one
+            if (inFlightExchange) {
+                console.log("🔐 Authorization code exchange already in progress. Awaiting existing exchange...");
+                try {
+                    await inFlightExchange;
+                } catch (_) {
+                    // Handled by the primary worker
                 }
+                return;
+            }
+
+            // 3. Start the single atomic exchange
+            inFlightExchange = (async () => {
+                setAuthInProgress(true);
+                console.log("🔐 Loading... Checking user authentication");
 
                 const codeVerifier = (await AsyncStorage.getItem("auth0_code_verifier")) || "";
                 if (!codeVerifier) {
@@ -62,34 +81,44 @@ export default function Callback() {
                 console.log("🔐 Token received, sending to backend");
                 const res = await axios.post(`${API_URL}/api/auth/google`, { idToken });
 
-                // Debugging: Check if user profile data is correct
                 console.log("🔐 Backend response:", res.data);
-
-                const profileCompleted = res.data.user.profileCompleted; // Check profile status
+                const profileCompleted = !!res.data.user?.profileCompleted;
                 console.log("🔐 Profile Completed Status:", profileCompleted);
 
-                // Update frontend state and login the user
+                // Mark code as used before navigating
+                processedCodes.add(code);
+
+                // Update auth state in app
                 await login(res.data.token, profileCompleted);
 
-                // Clean up AsyncStorage
-                await AsyncStorage.removeItem("auth0_code_verifier");
-                await AsyncStorage.removeItem("auth0_redirect_uri");
+                // Clean up temporary Auth0 storage keys
+                await AsyncStorage.multiRemove(["auth0_code_verifier", "auth0_redirect_uri"]);
 
                 setAuthInProgress(false);
 
-                // Debugging: Check redirection based on profile completion
                 if (profileCompleted) {
                     console.log("🔐 Redirecting to profile page");
-                    router.replace("/(tabs)/profile"); // Redirect to profile page
+                    router.replace("/(tabs)/profile");
                 } else {
                     console.log("🔐 Redirecting to complete profile page");
-                    router.replace("/(auth)/complete-profile"); // Redirect to complete profile page
+                    router.replace("/(auth)/complete-profile");
                 }
+            })();
 
+            try {
+                await inFlightExchange;
             } catch (err: any) {
                 console.log("❌ Callback error:", err);
-                hasExchanged.current = false;
                 setAuthInProgress(false);
+
+                // Safety guard: If token is already present (e.g. backend succeeded), suppress alert!
+                const savedToken = await AsyncStorage.getItem("token");
+                if (savedToken) {
+                    console.log("🔐 User token already saved. Suppressing false callback error dialog.");
+                    router.replace("/(tabs)/profile");
+                    return;
+                }
+
                 const errorMsg =
                     err?.response?.data?.message ||
                     err?.message ||
@@ -97,6 +126,8 @@ export default function Callback() {
                 Alert.alert("Login Failed", `${errorMsg}\n\nEndpoint: ${API_URL}/api/auth/google`, [
                     { text: "OK", onPress: () => router.replace("/(auth)/welcome") }
                 ]);
+            } finally {
+                inFlightExchange = null;
             }
         };
 
