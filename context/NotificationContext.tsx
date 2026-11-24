@@ -16,7 +16,11 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
-  // Automatically register token when user is logged in
+  // Register token on mount and whenever authentication state updates
+  useEffect(() => {
+    registerForPushNotificationsAsync();
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated && token) {
       registerForPushNotificationsAsync();
