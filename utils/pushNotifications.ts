@@ -88,7 +88,16 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     }
 
     return pushToken;
-  } catch (err) {
+  } catch (err: any) {
+    if (
+      err?.message?.includes("Default FirebaseApp is not initialized") ||
+      err?.message?.includes("googleServicesFile")
+    ) {
+      console.warn(
+        "ℹ️ [Push Notifications] Firebase is not compiled into your currently installed APK yet. Push notifications will automatically activate as soon as you generate a new build with google-services.json."
+      );
+      return null;
+    }
     console.error("❌ Error registering for push notifications:", err);
     return null;
   }
