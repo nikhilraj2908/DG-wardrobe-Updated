@@ -118,6 +118,22 @@ export default function SignupScreen() {
     savePKCE();
   }, [request]);
 
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { code } = response.params;
+      if (code) {
+        router.push({
+          pathname: "/(auth)/callback",
+          params: { code },
+        });
+      } else {
+        setAuthInProgress(false);
+      }
+    } else if (response?.type === "error" || response?.type === "dismiss") {
+      setAuthInProgress(false);
+    }
+  }, [response]);
+
   // Handle regular signup
   const handleSignup = async () => {
     if (!email || !password || !confirmPassword || !gender || !phone || !day || !month || !year) {

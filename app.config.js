@@ -5,7 +5,7 @@ export default ({ config }) => ({
   name: config.name || "DigiWardrobe",
   slug: config.slug || "YourDigiCloset",
   version: config.version || "1.0.0",
-  scheme: config.scheme || "digiwardrobe",
+  scheme: Array.isArray(config.scheme) ? config.scheme : ["mydgwardrobe", "digiwardrobe"],
   icon: config.icon || "./assets/images/icon.png",
 
   android: {
@@ -28,7 +28,10 @@ export default ({ config }) => ({
     intentFilters: [
       {
         action: "VIEW",
-        data: [{ scheme: config.scheme || "digiwardrobe" }],
+        data: [
+          { scheme: "mydgwardrobe" },
+          { scheme: "digiwardrobe" },
+        ],
         category: ["BROWSABLE", "DEFAULT"],
       },
     ],

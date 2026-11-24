@@ -68,8 +68,19 @@ const handleGoogleLogin = async () => {
   setAuthInProgress(true);
   await promptAsync();
 };
+
 useEffect(() => {
-  if (response?.type === "error") {
+  if (response?.type === "success") {
+    const { code } = response.params;
+    if (code) {
+      router.push({
+        pathname: "/(auth)/callback",
+        params: { code },
+      });
+    } else {
+      setAuthInProgress(false);
+    }
+  } else if (response?.type === "error" || response?.type === "dismiss") {
     setAuthInProgress(false);
   }
 }, [response]);

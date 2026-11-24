@@ -19,7 +19,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     if (!hydrated || authInProgress) return;
 
     const inAuthGroup = segments[0] === "(auth)";
-    const screen = segments[1];
+    const screen = (segments as string[])[1];
 
     const isCallback = inAuthGroup && screen === "callback";
     const isCompleteProfile = inAuthGroup && screen === "complete-profile";

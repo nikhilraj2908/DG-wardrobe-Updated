@@ -4,7 +4,7 @@ import axios from "axios";
 import * as AuthSession from "expo-auth-session";
 import Constants from "expo-constants";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
 
 const extra = Constants.expoConfig?.extra || (Constants.manifest as any)?.extra || {};
@@ -21,9 +21,12 @@ export default function Callback() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { login, setAuthInProgress } = useAuth();
+    const hasExchanged = useRef(false);
 
     useEffect(() => {
         const run = async () => {
+            if (hasExchanged.current) return;
+            hasExchanged.current = true;
             try {
                 setAuthInProgress(true); // Start loading
                 console.log("🔐 Loading... Checking user authentication");
@@ -85,6 +88,7 @@ export default function Callback() {
 
             } catch (err: any) {
                 console.log("❌ Callback error:", err);
+                hasExchanged.current = false;
                 setAuthInProgress(false);
                 const errorMsg =
                     err?.response?.data?.message ||
