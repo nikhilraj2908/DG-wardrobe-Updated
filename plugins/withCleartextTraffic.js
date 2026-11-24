@@ -63,3 +63,4 @@ const withCleartextTraffic = (config) => {
 };
 
 module.exports = withCleartextTraffic;
+
