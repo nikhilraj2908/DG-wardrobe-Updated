@@ -17,6 +17,7 @@
     "android": {
       "package": "com.nikhil.digiwardrobe",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -50,6 +51,13 @@
         {
           "photosPermission": "The app accesses your photos to let you add clothing items to your wardrobe.",
           "cameraPermission": "The app accesses your camera to let you take photos of your clothes."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/DW_logo_A855F7.png",
+          "color": "#7C3AED"
         }
       ]
     ]

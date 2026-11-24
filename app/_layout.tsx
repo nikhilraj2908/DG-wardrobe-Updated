@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SavedItemsProvider } from "../context/SavedItemsContext";
 import { FollowProvider } from "@/context/FollowContext";
 import { AuthProvider } from "../context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { ThemeProvider, useTheme } from "./theme/ThemeContext";
 import AuthGate from "@/components/AuthGate";
 import { StatusBar } from "expo-status-bar";
@@ -49,10 +50,12 @@ export default function RootLayout() {
         <FollowProvider>
           <SavedItemsProvider>
             <ThemeProvider>
-              <GlobalStatusBar />
-              <AuthGate>
-                <Slot />
-              </AuthGate>
+              <NotificationProvider>
+                <GlobalStatusBar />
+                <AuthGate>
+                  <Slot />
+                </AuthGate>
+              </NotificationProvider>
             </ThemeProvider>
           </SavedItemsProvider>
         </FollowProvider>

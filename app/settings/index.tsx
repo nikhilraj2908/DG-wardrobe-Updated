@@ -2,12 +2,13 @@ import AppBackground from "@/components/AppBackground";
 import WardrobeHeader from "@/components/WardrobeHeader";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/app/theme/ThemeContext";
 import { useEffect, useMemo, useState } from "react";
 import api from "@/api/api";
+import { getNotificationPreference, updateNotificationPreference } from "@/utils/pushNotifications";
 
 const SettingsPage = () => {
     const { logout } = useAuth();
@@ -15,6 +16,11 @@ const SettingsPage = () => {
     const colors = theme.colors;
     const styles = useMemo(() => createStyles(colors), [colors]);
     const [isGoogleUser, setIsGoogleUser] = useState(false);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+    useEffect(() => {
+        getNotificationPreference().then(setNotificationsEnabled);
+    }, []);
 
     useEffect(() => {
         const checkUser = async () => {
@@ -142,13 +148,21 @@ const SettingsPage = () => {
                             <Ionicons name="ban-outline" size={20} color={colors.primary} />
                             <Text style={styles.text}>Blocked Accounts</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.settingOption}
-                            onPress={handleNotificationPreferences}
-                        >
-                            <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-                            <Text style={styles.text}>Notification Preferences</Text>
-                        </TouchableOpacity>
+                        <View style={styles.settingOptionBetween}>
+                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+                                <Text style={styles.text}>Push Notifications</Text>
+                            </View>
+                            <Switch
+                                value={notificationsEnabled}
+                                onValueChange={async (value) => {
+                                    setNotificationsEnabled(value);
+                                    await updateNotificationPreference(value);
+                                }}
+                                trackColor={{ false: colors.border, true: colors.primary }}
+                                thumbColor="#ffffff"
+                            />
+                        </View>
                         <TouchableOpacity
                             style={styles.settingOption}
                             onPress={() => router.push("/theme-settings")}
@@ -231,6 +245,15 @@ const createStyles = (colors: any) =>
         settingOption: {
             flexDirection: "row",
             alignItems: "center",
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+            marginBottom: 10,
+        },
+        settingOptionBetween: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
             paddingVertical: 12,
             borderBottomWidth: 1,
             borderBottomColor: colors.border,

@@ -11,6 +11,7 @@ export default ({ config }) => ({
   android: {
     ...config?.android,
     package: config.android?.package || "com.nikhil.digiwardrobe",
+    googleServicesFile: config.android?.googleServicesFile || "./google-services.json",
     usesCleartextTraffic: true,
     permissions: [
       "CAMERA",
