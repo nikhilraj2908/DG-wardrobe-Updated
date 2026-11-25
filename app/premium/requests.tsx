@@ -61,12 +61,21 @@ export default function PremiumRequestsPage() {
       const pendingRes = await api.get("/api/premium/requests", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setPending(pendingRes.data || []);
+      const sortedPending = (pendingRes.data || []).sort(
+        (a: PremiumRequest, b: PremiumRequest) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setPending(sortedPending);
 
       const approvedRes = await api.get("/api/premium/approved-by-me", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setApproved(approvedRes.data?.approvals || []);
+      const sortedApproved = (approvedRes.data?.approvals || []).sort(
+        (a: PremiumRequest, b: PremiumRequest) =>
+          new Date(b.updatedAt || b.createdAt).getTime() -
+          new Date(a.updatedAt || a.createdAt).getTime()
+      );
+      setApproved(sortedApproved);
     } catch (err) {
       console.log("Failed to load premium requests", err);
     } finally {
@@ -179,6 +188,9 @@ export default function PremiumRequestsPage() {
                     <Text style={{ fontWeight: "600" }}>
                       {req.item?.wardrobe?.name || "Premium Collection"}
                     </Text>
+                  </Text>
+                  <Text style={[styles.subText, { fontSize: 11, color: colors.textMuted, marginTop: 2 }]}>
+                    Requested on {formatDateTime(req.createdAt)}
                   </Text>
                 </View>
               </View>

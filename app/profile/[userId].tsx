@@ -188,7 +188,11 @@ export default function OtherUserProfile() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setPremiumRequests(response.data || []);
+      const sortedRequests = (response.data || []).sort(
+        (a: PremiumRequest, b: PremiumRequest) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setPremiumRequests(sortedRequests);
     } catch (error) {
       console.log("Failed to load premium requests:", error);
     }
