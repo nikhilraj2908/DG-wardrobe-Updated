@@ -39,6 +39,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         type?: string;
         itemId?: string;
         userId?: string;
+        ownerId?: string;
         orderNumber?: string;
       } | undefined;
 
@@ -47,6 +48,16 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       if (data?.type === "premium_request") {
         // Access request -> redirect to premium requests approval screen
         router.push("/premium/requests" as any);
+      } else if (data?.type === "premium_approved") {
+        // Access approved -> redirect to owner's profile to see unlocked collection
+        const targetUserId = data?.ownerId || data?.userId;
+        if (targetUserId) {
+          router.push(`/profile/${targetUserId}`);
+        } else if (data?.itemId) {
+          router.push(`/wardrobe/item/${data.itemId}`);
+        } else {
+          router.push("/notifications");
+        }
       } else if (data?.itemId) {
         // Outfit or clothing item like/comment/approved access
         router.push(`/wardrobe/item/${data.itemId}`);

@@ -81,6 +81,7 @@ export default function OtherUserProfile() {
   const [premiumCover, setPremiumCover] = useState<string | null>(null);
   const [premiumItemId, setPremiumItemId] = useState<string | null>(null);
   const [premiumRequestSent, setPremiumRequestSent] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumItemCount, setPremiumItemCount] = useState(0);
   const [premiumWorth, setPremiumWorth] = useState(0);
@@ -102,7 +103,7 @@ export default function OtherUserProfile() {
 
   // Check if current user has premium access
   const checkPremiumAccess = async () => {
-    if (!premiumItemId) return;
+    if (!userId) return;
 
     try {
       setIsCheckingPremium(true);
@@ -110,16 +111,16 @@ export default function OtherUserProfile() {
       if (!token) return;
 
       const accessRes = await api.get(
-        `/api/premium/check?itemId=${premiumItemId}`,
+        `/api/premium/check?ownerId=${userId}${premiumItemId ? `&itemId=${premiumItemId}` : ""}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setHasPremiumAccess(accessRes.data.hasAccess);
 
-      // 🔥 NEW: check request status
+      // Check request status
       if (!accessRes.data.hasAccess) {
         const statusRes = await api.get(
-          `/api/premium/status?itemId=${premiumItemId}`,
+          `/api/premium/status?ownerId=${userId}${premiumItemId ? `&itemId=${premiumItemId}` : ""}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -139,6 +140,7 @@ export default function OtherUserProfile() {
   // Request access to premium items
   const requestPremiumAccess = async () => {
     try {
+      setIsRequesting(true);
       const token = await storage.getItem("token");
       if (!token) {
         Alert.alert("Login Required", "Please login to request premium access");
@@ -146,21 +148,16 @@ export default function OtherUserProfile() {
         return;
       }
 
-      if (!premiumItemId) {
-        Alert.alert("Error", "Unable to send request");
-        return;
-      }
-
       await api.post(
         "/api/premium/request",
-        { itemId: premiumItemId },
+        { itemId: premiumItemId, ownerId: userId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setPremiumRequestSent(true);
       Alert.alert(
         "Request Sent! 🚀",
-        `Your request has been sent to ${user?.username}. You'll be notified when approved.`
+        `Your request has been sent to ${user?.username || "this user"}. You'll be notified when approved.`
       );
 
     } catch (error: any) {
@@ -175,6 +172,8 @@ export default function OtherUserProfile() {
       } else {
         Alert.alert("Error", "Failed to send request. Please try again.");
       }
+    } finally {
+      setIsRequesting(false);
     }
   };
 
@@ -278,6 +277,7 @@ export default function OtherUserProfile() {
   useEffect(() => {
     if (!userId) return;
     loadProfile();
+    checkPremiumAccess();
   }, [userId]);
 
   useEffect(() => {
@@ -481,11 +481,20 @@ export default function OtherUserProfile() {
                     </View>
                   )}
 
-                  {/* Lock Overlay if locked */}
+                  {/* Lock Overlay if locked or requested */}
                   {!hasPremiumAccess && (
                     <View style={styles.lockOverlay}>
-                      <Ionicons name="lock-closed" size={26} color="#fff" />
-                      <Text style={styles.lockText}>Locked</Text>
+                      {premiumRequestSent ? (
+                        <>
+                          <Ionicons name="time" size={26} color="#FBBF24" />
+                          <Text style={[styles.lockText, { color: "#FBBF24" }]}>Requested</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Ionicons name="lock-closed" size={26} color="#fff" />
+                          <Text style={styles.lockText}>Locked</Text>
+                        </>
+                      )}
                     </View>
                   )}
 
@@ -549,12 +558,26 @@ export default function OtherUserProfile() {
 
                 <View style={styles.modalBody}>
                   <View style={styles.modalIcon}>
-                    <Ionicons name="lock-closed" size={48} color={colors.primary} />
+                    <Ionicons
+                      name={premiumRequestSent ? "time" : "lock-closed"}
+                      size={48}
+                      color={premiumRequestSent ? "#F59E0B" : colors.primary}
+                    />
                   </View>
 
-                  <Text style={styles.modalTitle}>Request Premium Access</Text>
+                  <Text style={styles.modalTitle}>
+                    {premiumRequestSent ? "Request Pending" : "Request Premium Access"}
+                  </Text>
                   <Text style={styles.modalDescription}>
-                    Send a request to <Text style={styles.boldText}>{user?.username}</Text> to access their exclusive premium collection. They will be notified and can approve your request.
+                    {premiumRequestSent ? (
+                      <>
+                        Your request has already been sent to <Text style={styles.boldText}>{user?.username || "this user"}</Text>. You will be notified as soon as they approve your request!
+                      </>
+                    ) : (
+                      <>
+                        Send a request to <Text style={styles.boldText}>{user?.username || "this user"}</Text> to access their exclusive premium collection. They will be notified and can approve your request.
+                      </>
+                    )}
                   </Text>
 
                   <View style={styles.premiumCardPreview}>
@@ -564,22 +587,43 @@ export default function OtherUserProfile() {
                     <Text style={styles.premiumCardCount}>{premiumItemCount} items</Text>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.sendRequestButton}
-                    onPress={() => {
-                      requestPremiumAccess();
-                      setShowPremiumModal(false);
-                    }}
-                  >
-                    <Ionicons name="send-outline" size={20} color="#fff" />
-                    <Text style={styles.sendRequestButtonText}>Send Request</Text>
-                  </TouchableOpacity>
+                  {premiumRequestSent ? (
+                    <View
+                      style={[
+                        styles.sendRequestButton,
+                        {
+                          backgroundColor: "#D97706",
+                          opacity: 0.9,
+                        },
+                      ]}
+                    >
+                      <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                      <Text style={styles.sendRequestButtonText}>
+                        Requested (Pending Approval)
+                      </Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.sendRequestButton}
+                      disabled={isRequesting}
+                      onPress={requestPremiumAccess}
+                    >
+                      {isRequesting ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <>
+                          <Ionicons name="send-outline" size={20} color="#fff" />
+                          <Text style={styles.sendRequestButtonText}>Request Access</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
 
                   <TouchableOpacity
                     style={styles.cancelButton}
                     onPress={() => setShowPremiumModal(false)}
                   >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                    <Text style={styles.cancelButtonText}>Close</Text>
                   </TouchableOpacity>
                 </View>
               </View>
