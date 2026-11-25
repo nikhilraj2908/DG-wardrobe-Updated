@@ -658,7 +658,16 @@ export default function OtherUserProfile() {
                   <ScrollView style={styles.requestsList}>
                     {premiumRequests.map((request) => (
                       <View key={request._id} style={styles.requestItem}>
-                        <View style={styles.requestHeader}>
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          style={styles.requestHeader}
+                          onPress={() => {
+                            if (request.requester?._id) {
+                              setShowRequestsModal(false);
+                              router.push(`/profile/${request.requester._id}`);
+                            }
+                          }}
+                        >
                           {request.requester.photo ? (
                             <Image
                               source={{ uri: resolveImageUrl(request.requester.photo) }}
@@ -672,14 +681,17 @@ export default function OtherUserProfile() {
                             </View>
                           )}
                           <View style={styles.requesterInfo}>
-                            <Text style={styles.requesterName}>
-                              {request.requester.username}
-                            </Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                              <Text style={styles.requesterName}>
+                                {request.requester.username}
+                              </Text>
+                              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                            </View>
                             <Text style={styles.requestTime}>
                               Wants to access your premium items
                             </Text>
                           </View>
-                        </View>
+                        </TouchableOpacity>
 
                         <View style={styles.requestActions}>
                           {request.status === 'pending' ? (

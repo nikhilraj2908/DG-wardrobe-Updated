@@ -145,12 +145,16 @@ export default function PremiumRequestsPage() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top", "bottom"]}>
       <AppBackground>
         {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Premium Access Requests</Text>
         </View>
@@ -168,31 +172,44 @@ export default function PremiumRequestsPage() {
           {pending.map((req) => (
             <View key={req._id} style={styles.card}>
               <View style={styles.row}>
-                {req.requester.photo ? (
-                  <Image
-                    source={{ uri: resolveImageUrl(req.requester.photo) }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View style={styles.avatarFallback}>
-                    <Text style={styles.avatarText}>
-                      {req.requester.username[0].toUpperCase()}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={styles.userInfoRow}
+                  onPress={() => {
+                    if (req.requester?._id) {
+                      router.push(`/profile/${req.requester._id}`);
+                    }
+                  }}
+                >
+                  {req.requester?.photo ? (
+                    <Image
+                      source={{ uri: resolveImageUrl(req.requester.photo) }}
+                      style={styles.avatar}
+                    />
+                  ) : (
+                    <View style={styles.avatarFallback}>
+                      <Text style={styles.avatarText}>
+                        {req.requester?.username ? req.requester.username[0].toUpperCase() : "U"}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.nameRow}>
+                      <Text style={styles.name}>{req.requester?.username || "Unknown"}</Text>
+                      <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                    </View>
+                    <Text style={styles.subText}>
+                      Wants access to{" "}
+                      <Text style={{ fontWeight: "600", color: colors.textPrimary }}>
+                        {req.item?.wardrobe?.name || "Premium Collection"}
+                      </Text>
+                    </Text>
+                    <Text style={[styles.subText, { fontSize: 11, color: colors.textMuted, marginTop: 2 }]}>
+                      Requested on {formatDateTime(req.createdAt)}
                     </Text>
                   </View>
-                )}
-
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{req.requester.username}</Text>
-                  <Text style={styles.subText}>
-                    Wants access to{" "}
-                    <Text style={{ fontWeight: "600" }}>
-                      {req.item?.wardrobe?.name || "Premium Collection"}
-                    </Text>
-                  </Text>
-                  <Text style={[styles.subText, { fontSize: 11, color: colors.textMuted, marginTop: 2 }]}>
-                    Requested on {formatDateTime(req.createdAt)}
-                  </Text>
-                </View>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.actions}>
@@ -227,36 +244,55 @@ export default function PremiumRequestsPage() {
           {approved.map((req) => (
             <View key={req._id} style={[styles.card, styles.approvedCard]}>
               <View style={styles.row}>
-                {req.requester.photo ? (
-                  <Image
-                    source={{ uri: resolveImageUrl(req.requester.photo) }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View style={styles.avatarFallback}>
-                    <Text style={styles.avatarText}>
-                      {req.requester.username[0].toUpperCase()}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={styles.userInfoRow}
+                  onPress={() => {
+                    if (req.requester?._id) {
+                      router.push(`/profile/${req.requester._id}`);
+                    }
+                  }}
+                >
+                  {req.requester?.photo ? (
+                    <Image
+                      source={{ uri: resolveImageUrl(req.requester.photo) }}
+                      style={styles.avatar}
+                    />
+                  ) : (
+                    <View style={styles.avatarFallback}>
+                      <Text style={styles.avatarText}>
+                        {req.requester?.username ? req.requester.username[0].toUpperCase() : "U"}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.nameRow}>
+                      <Text style={styles.name}>{req.requester?.username || "Unknown"}</Text>
+                      <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                    </View>
+                    <Text style={styles.subText}>
+                      Access to{" "}
+                      <Text style={{ fontWeight: "600", color: colors.textPrimary }}>
+                        {req.item?.wardrobe?.name || "Premium Item"}
+                      </Text>
+                    </Text>
+                    <Text style={[styles.subText, { fontSize: 11, color: colors.textMuted, marginTop: 2 }]}>
+                      Approved on {formatDateTime(req.updatedAt || req.createdAt)}
                     </Text>
                   </View>
-                )}
-
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{req.requester.username}</Text>
-                  <Text style={styles.subText}>
-                    Access to{" "}
-                    <Text style={{ fontWeight: "600" }}>
-                      {req.item?.wardrobe?.name || "Premium Item"}
-                    </Text>
-                  </Text>
-                  <Text style={styles.subText}>
-                    Approved on {formatDateTime(req.updatedAt || req.createdAt)}
-                  </Text>
-                </View>
-
-                <Ionicons name="checkmark-circle" size={22} color={colors.success} />
-                <TouchableOpacity onPress={() => revoke(req._id, req.requester.username)}>
-                  <Ionicons name="close-circle" size={20} color={colors.danger} />
                 </TouchableOpacity>
+
+                <View style={styles.approvedActions}>
+                  <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+                  <TouchableOpacity
+                    onPress={() => revoke(req._id, req.requester?.username || "this user")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ padding: 4 }}
+                  >
+                    <Ionicons name="close-circle" size={20} color={colors.danger} />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           ))}
@@ -277,9 +313,14 @@ const createStyles = (colors: any) =>
     header: {
       flexDirection: "row",
       alignItems: "center",
-      // padding: 16,
-      gap: 12,
-      backgroundColor: colors.background,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backBtn: {
+      marginRight: 12,
+      padding: 4,
     },
     headerTitle: {
       fontSize: 18,
@@ -314,8 +355,24 @@ const createStyles = (colors: any) =>
     },
     row: {
       flexDirection: "row",
-      gap: 12,
       alignItems: "center",
+      justifyContent: "space-between",
+    },
+    userInfoRow: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    nameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    approvedActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
     },
     avatar: {
       width: 44,
