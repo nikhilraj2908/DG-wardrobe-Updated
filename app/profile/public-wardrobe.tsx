@@ -3,8 +3,7 @@ import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { Ionicons } from "@expo/vector-icons";
 import { storage } from "@/utils/storage";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import {  useMemo, useState } from "react";
-import { useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -14,11 +13,11 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import api from "../../api/api";
 import { useTheme } from "@/app/theme/ThemeContext";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -28,6 +27,7 @@ interface WardrobeItem {
   category: string;
   price: number;
   brand?: string | { _id: string; name: string; color?: string };
+  color?: string;
   imageUrl?: string;
   images?: string[];
   createdAt: string;
@@ -39,10 +39,19 @@ interface UserInfo {
   _id: string;
   username: string;
   name?: string;
+  photo?: string;
   profilePicture?: string;
 }
 
-// Category Icons - Same as in items.tsx
+type SortOption =
+  | "dateNewest"
+  | "dateOldest"
+  | "colorAZ"
+  | "priceHigh"
+  | "priceLow"
+  | "nameAZ";
+
+// Category Icons
 const CATEGORY_ICONS = {
   mens: {
     accessories: require("../../assets/categories/mens/Accessories.png"),
@@ -132,7 +141,7 @@ const CATEGORY_ICONS = {
     tanktops: require("../../assets/categories/womens/TankTop.png"),
     traditionalwear: require("../../assets/categories/womens/TraditionalWear.png"),
     trousers: require("../../assets/categories/womens/Trouser.png"),
-    't-shirts': require("../../assets/categories/womens/Tshirt.png"),
+    "t-shirts": require("../../assets/categories/womens/Tshirt.png"),
     vests: require("../../assets/categories/womens/Vest.png"),
     tops: require("../../assets/categories/womens/Top.png"),
     skirts: require("../../assets/categories/womens/Skirt.png"),
@@ -146,37 +155,60 @@ const normalizeCategoryKey = (name?: any) => {
   return name.toLowerCase().replace(/\s+/g, "");
 };
 
-// Helper function to get category icon
 const getCategoryIcon = (categoryName: string) => {
   const key = normalizeCategoryKey(categoryName);
-
-  // Try mens first, then womens
   const mensIcons = CATEGORY_ICONS.mens as any;
-  if (mensIcons[key]) {
-    return mensIcons[key];
-  }
-
+  if (mensIcons[key]) return mensIcons[key];
   const womensIcons = CATEGORY_ICONS.womens as any;
-  if (womensIcons[key]) {
-    return womensIcons[key];
-  }
-
+  if (womensIcons[key]) return womensIcons[key];
   return null;
 };
 
+const getColorHex = (name?: string): string => {
+  if (!name) return "#A855F7";
+  const clean = name.trim().toLowerCase();
+  if (clean.startsWith("#")) return clean;
+  const map: Record<string, string> = {
+    black: "#111827",
+    white: "#FFFFFF",
+    navy: "#1E3A8A",
+    blue: "#2563EB",
+    grey: "#6B7280",
+    gray: "#6B7280",
+    beige: "#D4B996",
+    brown: "#78350F",
+    red: "#DC2626",
+    pink: "#EC4899",
+    green: "#059669",
+    olive: "#4D7C0F",
+    yellow: "#EAB308",
+    orange: "#F97316",
+    purple: "#9333EA",
+    maroon: "#881337",
+    cream: "#FEF3C7",
+    silver: "#9CA3AF",
+    gold: "#D97706",
+  };
+  return map[clean] || "#A855F7";
+};
+
 export default function PublicWardrobeScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { theme } = useTheme();
   const colors = theme.colors;
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  const params = useLocalSearchParams<{ userId: string; username?: string }>();
+  const userId = params.userId;
+
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [sortModalVisible, setSortModalVisible] = useState(false);
-  const [sortBy, setSortBy] = useState<"dateNewest" | "dateOldest" | "priceHigh" | "priceLow" | "nameAZ">("dateNewest");
+  const [sortBy, setSortBy] = useState<SortOption>("dateNewest");
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [isGridView, setIsGridView] = useState(true);
   const [loading, setLoading] = useState(true);
-  const { userId } = useLocalSearchParams<{ userId: string }>();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const DEFAULT_IMAGE = "https://ui-avatars.com/api/?name=Item&background=random";
@@ -190,29 +222,38 @@ export default function PublicWardrobeScreen() {
     return "Uncategorized";
   };
 
+  const displayName = useMemo(() => {
+    const raw = userInfo?.username || userInfo?.name || params.username || "User";
+    if (!raw || raw.toLowerCase() === "user") return "User";
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }, [userInfo, params.username]);
+
+  const headerTitle = useMemo(() => {
+    if (!displayName || displayName === "User") return "User's Wardrobe";
+    return displayName.endsWith("s") || displayName.endsWith("S")
+      ? `${displayName}' Wardrobe`
+      : `${displayName}'s Wardrobe`;
+  }, [displayName]);
+
   const fetchUserPublicItems = async () => {
     try {
       setLoading(true);
       const token = await storage.getItem("token");
 
+      // 1. Fetch public items
       const res = await api.get(`/api/wardrobe/user/${userId}/items`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
-
       setItems(res.data.items || []);
 
+      // 2. Fetch user profile (fixed endpoint: /api/user/:userId)
       try {
-        const userRes = await api.get(`/api/user/${userId}/info`, {
+        const userRes = await api.get(`/api/user/${userId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         setUserInfo(userRes.data);
       } catch (err) {
-        console.log("Could not fetch user info, using default");
-        setUserInfo({
-          _id: userId,
-          username: `user_${userId?.substring(0, 8)}`,
-          name: "User",
-        });
+        console.log("Could not fetch user info");
       }
     } catch (err) {
       console.error("Error fetching public items:", err);
@@ -223,29 +264,31 @@ export default function PublicWardrobeScreen() {
   };
 
   const getWardrobeName = (wardrobe: string | { _id: string; name: string; color?: string }): string => {
-    if (typeof wardrobe === 'string') {
+    if (typeof wardrobe === "string") {
       return wardrobe;
     }
-    return wardrobe?.name || 'No Wardrobe';
+    return wardrobe?.name || "No Wardrobe";
   };
 
   const getBrandName = (brand?: string | { _id: string; name: string; color?: string }): string => {
-    if (!brand) return 'No Brand';
-    if (typeof brand === 'string') {
+    if (!brand) return "No Brand";
+    if (typeof brand === "string") {
       return brand;
     }
-    return brand?.name || 'No Brand';
+    return brand?.name || "No Brand";
   };
 
   useFocusEffect(
     useCallback(() => {
       if (userId) {
         setSelectedCategory(null);
+        setSelectedColor(null);
         fetchUserPublicItems();
       }
     }, [userId])
   );
 
+  // Compute Categories with item counts
   const categoriesWithCounts = useMemo(() => {
     const categoryMap = new Map<string, number>();
 
@@ -260,24 +303,62 @@ export default function PublicWardrobeScreen() {
       .sort((a, b) => b.count - a.count);
   }, [items]);
 
-  const filteredItems = selectedCategory
-    ? items.filter((item) => getCategoryName(item.category) === selectedCategory)
-    : items;
+  // Compute Colors with item counts
+  const colorsWithCounts = useMemo(() => {
+    const colorMap = new Map<string, number>();
 
-  const sortedItems = [...filteredItems].sort((a, b) => {
-    switch (sortBy) {
-      case "dateOldest":
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      case "priceHigh":
-        return b.price - a.price;
-      case "priceLow":
-        return a.price - b.price;
-      case "nameAZ":
-        return getCategoryName(a.category).localeCompare(getCategoryName(b.category));
-      default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-  });
+    items.forEach((item) => {
+      if (item.color && typeof item.color === "string" && item.color.trim().length > 0) {
+        const c = item.color.trim();
+        const formatted = c.charAt(0).toUpperCase() + c.slice(1).toLowerCase();
+        colorMap.set(formatted, (colorMap.get(formatted) || 0) + 1);
+      }
+    });
+
+    return Array.from(colorMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [items]);
+
+  const availableColors = useMemo(() => {
+    return colorsWithCounts.map((c) => c.name);
+  }, [colorsWithCounts]);
+
+  // Combined Filtering: Category + Color
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      if (selectedCategory && getCategoryName(item.category) !== selectedCategory) {
+        return false;
+      }
+      if (
+        selectedColor &&
+        (!item.color || item.color.trim().toLowerCase() !== selectedColor.trim().toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [items, selectedCategory, selectedColor]);
+
+  // Sorting
+  const sortedItems = useMemo(() => {
+    return [...filteredItems].sort((a, b) => {
+      switch (sortBy) {
+        case "dateOldest":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case "priceHigh":
+          return b.price - a.price;
+        case "priceLow":
+          return a.price - b.price;
+        case "nameAZ":
+          return getCategoryName(a.category).localeCompare(getCategoryName(b.category));
+        case "colorAZ":
+          return (a.color || "").localeCompare(b.color || "");
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+  }, [filteredItems, sortBy]);
 
   const getItemImageUrl = (item: WardrobeItem): string => {
     const imagePath = item.images?.[0] || item.imageUrl || null;
@@ -292,38 +373,44 @@ export default function PublicWardrobeScreen() {
       <TouchableOpacity
         key={name}
         onPress={() => setSelectedCategory(isSelected ? null : name)}
-        style={[
-          styles.categoryChip,
-          isSelected && styles.categoryChipSelected,
-        ]}
+        style={[styles.categoryChip, isSelected && styles.categoryChipSelected]}
         activeOpacity={0.8}
       >
-        <View style={[
-          styles.categoryIconContainer,
-          isSelected && styles.categoryIconContainerSelected,
-        ]}>
+        <View
+          style={[
+            styles.categoryIconContainer,
+            isSelected && styles.categoryIconContainerSelected,
+          ]}
+        >
           {icon ? (
             <Image
               source={icon}
               style={[
                 styles.categoryIcon,
-                isSelected && styles.categoryIconSelected
+                isSelected && styles.categoryIconSelected,
               ]}
             />
           ) : (
             <Ionicons
               name="shirt-outline"
               size={22}
-              color={isSelected ? colors.primaryDark : colors.primary}
+              color={isSelected ? "#FFFFFF" : colors.primary}
             />
           )}
 
           {count > 0 && (
-            <View style={[
-              styles.categoryCountBadge,
-              isSelected && styles.categoryCountBadgeSelected
-            ]}>
-              <Text style={[styles.categoryCountText, isSelected && styles.categoryCountTextSelected]}>
+            <View
+              style={[
+                styles.categoryCountBadge,
+                isSelected && styles.categoryCountBadgeSelected,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.categoryCountText,
+                  isSelected && styles.categoryCountTextSelected,
+                ]}
+              >
                 {count}
               </Text>
             </View>
@@ -333,7 +420,7 @@ export default function PublicWardrobeScreen() {
         <Text
           style={[
             styles.categoryChipLabel,
-            isSelected && styles.categoryChipLabelSelected
+            isSelected && styles.categoryChipLabelSelected,
           ]}
           numberOfLines={2}
         >
@@ -374,9 +461,25 @@ export default function PublicWardrobeScreen() {
           <Text style={styles.gridItemPrice}>₹{item.price}</Text>
         </View>
 
-        <Text style={styles.gridItemBrand} numberOfLines={1}>
-          {getBrandName(item.brand) || getWardrobeName(item.wardrobe)}
-        </Text>
+        <View style={styles.brandAndColorRow}>
+          <Text style={styles.gridItemBrand} numberOfLines={1}>
+            {getBrandName(item.brand) || getWardrobeName(item.wardrobe)}
+          </Text>
+          {item.color ? (
+            <View style={styles.itemColorTag}>
+              <View
+                style={[
+                  styles.itemColorDot,
+                  { backgroundColor: getColorHex(item.color) },
+                  item.color.toLowerCase() === "white" && styles.colorDotBorder,
+                ]}
+              />
+              <Text style={styles.itemColorTagText} numberOfLines={1}>
+                {item.color}
+              </Text>
+            </View>
+          ) : null}
+        </View>
 
         {item.description && (
           <Text style={styles.gridItemDescription} numberOfLines={2}>
@@ -417,6 +520,21 @@ export default function PublicWardrobeScreen() {
             {getBrandName(item.brand) || getWardrobeName(item.wardrobe)}
           </Text>
 
+          {item.color ? (
+            <View style={styles.itemColorTag}>
+              <View
+                style={[
+                  styles.itemColorDot,
+                  { backgroundColor: getColorHex(item.color) },
+                  item.color.toLowerCase() === "white" && styles.colorDotBorder,
+                ]}
+              />
+              <Text style={styles.itemColorTagText} numberOfLines={1}>
+                {item.color}
+              </Text>
+            </View>
+          ) : null}
+
           <View style={styles.listPublicIndicator}>
             <Ionicons name="earth-outline" size={10} color={colors.success} />
             <Text style={styles.listPublicText}>Public</Text>
@@ -441,9 +559,10 @@ export default function PublicWardrobeScreen() {
     </TouchableOpacity>
   );
 
+  const isFilterOrSortActive = sortBy !== "dateNewest" || selectedColor !== null;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top", "bottom"]}>
-
       <AppBackground>
         <View style={styles.container}>
           {/* Header with User Info */}
@@ -458,10 +577,10 @@ export default function PublicWardrobeScreen() {
 
               <View style={styles.headerUserInfo}>
                 <Text style={styles.headerTitle} numberOfLines={1}>
-                  {userInfo?.name || userInfo?.username || "User"}'s Wardrobe
+                  {headerTitle}
                 </Text>
                 <Text style={styles.headerSubtitle}>
-                  {items.length} public {items.length === 1 ? 'item' : 'items'}
+                  {items.length} public {items.length === 1 ? "item" : "items"}
                 </Text>
               </View>
             </View>
@@ -475,11 +594,23 @@ export default function PublicWardrobeScreen() {
                 />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.sortButton}
+                style={[styles.sortButton, isFilterOrSortActive && styles.sortButtonActive]}
                 onPress={() => setSortModalVisible(true)}
               >
-                <Ionicons name="filter-outline" size={18} color={colors.primary} />
-                <Text style={styles.sortButtonText}>Sort</Text>
+                <Ionicons
+                  name={isFilterOrSortActive ? "filter" : "filter-outline"}
+                  size={16}
+                  color={isFilterOrSortActive ? "#FFFFFF" : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.sortButtonText,
+                    isFilterOrSortActive && styles.sortButtonTextActive,
+                  ]}
+                >
+                  Sort
+                </Text>
+                {isFilterOrSortActive && <View style={styles.sortActiveDot} />}
               </TouchableOpacity>
             </View>
           </View>
@@ -514,22 +645,33 @@ export default function PublicWardrobeScreen() {
                   ]}
                   activeOpacity={0.8}
                 >
-                  <View style={[
-                    styles.categoryIconContainer,
-                    !selectedCategory && styles.categoryIconContainerSelected,
-                  ]}>
+                  <View
+                    style={[
+                      styles.categoryIconContainer,
+                      !selectedCategory && styles.categoryIconContainerSelected,
+                    ]}
+                  >
                     <Ionicons
                       name="apps-outline"
                       size={22}
-                      color={!selectedCategory ? colors.primaryDark : colors.primary}
+                      color={!selectedCategory ? "#FFFFFF" : colors.primary}
                     />
 
                     {items.length > 0 && (
-                      <View style={[
-                        styles.categoryCountBadge,
-                        !selectedCategory && styles.categoryCountBadgeSelected
-                      ]}>
-                        <Text style={styles.categoryCountText}>{items.length}</Text>
+                      <View
+                        style={[
+                          styles.categoryCountBadge,
+                          !selectedCategory && styles.categoryCountBadgeSelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.categoryCountText,
+                            !selectedCategory && styles.categoryCountTextSelected,
+                          ]}
+                        >
+                          {items.length}
+                        </Text>
                       </View>
                     )}
                   </View>
@@ -537,7 +679,7 @@ export default function PublicWardrobeScreen() {
                   <Text
                     style={[
                       styles.categoryChipLabel,
-                      !selectedCategory && styles.categoryChipLabelSelected
+                      !selectedCategory && styles.categoryChipLabelSelected,
                     ]}
                   >
                     All
@@ -550,14 +692,163 @@ export default function PublicWardrobeScreen() {
             </View>
           )}
 
-          {/* Results Info */}
+          {/* Colors Filter Section */}
+          {colorsWithCounts.length > 0 && (
+            <View style={styles.colorsSection}>
+              <View style={styles.colorsHeader}>
+                <Text style={styles.colorsTitle}>Filter by Color</Text>
+                {selectedColor && (
+                  <TouchableOpacity onPress={() => setSelectedColor(null)}>
+                    <Text style={styles.clearColorText}>Clear</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.colorsScrollView}
+                contentContainerStyle={styles.colorsContent}
+              >
+                {/* All Colors Chip */}
+                <TouchableOpacity
+                  onPress={() => setSelectedColor(null)}
+                  style={[
+                    styles.colorSwatchChip,
+                    !selectedColor && styles.colorSwatchChipSelected,
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.colorSwatchCircle,
+                      !selectedColor && styles.colorSwatchCircleSelected,
+                      { backgroundColor: colors.surface },
+                    ]}
+                  >
+                    <Ionicons
+                      name="color-palette"
+                      size={15}
+                      color={!selectedColor ? colors.primaryDark : colors.textMuted}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.colorSwatchLabel,
+                      !selectedColor && styles.colorSwatchLabelSelected,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    All
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Specific Colors */}
+                {colorsWithCounts.map((c) => {
+                  const isSelected =
+                    selectedColor?.toLowerCase() === c.name.toLowerCase();
+                  const hex = getColorHex(c.name);
+                  const isWhite = c.name.toLowerCase() === "white";
+
+                  return (
+                    <TouchableOpacity
+                      key={c.name}
+                      onPress={() => setSelectedColor(isSelected ? null : c.name)}
+                      style={[
+                        styles.colorSwatchChip,
+                        isSelected && styles.colorSwatchChipSelected,
+                      ]}
+                      activeOpacity={0.8}
+                    >
+                      <View
+                        style={[
+                          styles.colorSwatchCircle,
+                          isSelected && styles.colorSwatchCircleSelected,
+                          { backgroundColor: hex },
+                          isWhite && styles.whiteColorBorder,
+                        ]}
+                      >
+                        {isSelected ? (
+                          <Ionicons
+                            name="checkmark"
+                            size={13}
+                            color={isWhite ? "#111827" : "#FFFFFF"}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.colorSwatchBadge,
+                              isSelected && styles.colorSwatchBadgeSelected,
+                            ]}
+                          >
+                            <Text style={styles.colorSwatchBadgeText}>{c.count}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          styles.colorSwatchLabel,
+                          isSelected && styles.colorSwatchLabelSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {c.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Results Info & Active Filter Badges */}
           <View style={styles.resultsInfo}>
-            <Text style={styles.resultsText}>
-              {selectedCategory
-                ? `${filteredItems.length} ${filteredItems.length === 1 ? 'public item' : 'public items'} in "${selectedCategory}"`
-                : `${items.length} public items in collection`
-              }
-            </Text>
+            <View style={styles.resultsHeaderRow}>
+              <Text style={styles.resultsText}>
+                {sortedItems.length} public {sortedItems.length === 1 ? "item" : "items"} found
+              </Text>
+              {(selectedCategory || selectedColor) && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedCategory(null);
+                    setSelectedColor(null);
+                  }}
+                >
+                  <Text style={styles.clearAllFiltersText}>Reset Filters</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {(selectedCategory || selectedColor) && (
+              <View style={styles.activeFilterRow}>
+                {selectedCategory && (
+                  <TouchableOpacity
+                    style={styles.activeFilterPill}
+                    onPress={() => setSelectedCategory(null)}
+                  >
+                    <Ionicons name="shirt-outline" size={12} color={colors.primaryDark} />
+                    <Text style={styles.activeFilterPillText}>{selectedCategory}</Text>
+                    <Ionicons name="close-circle" size={13} color={colors.primaryDark} />
+                  </TouchableOpacity>
+                )}
+                {selectedColor && (
+                  <TouchableOpacity
+                    style={styles.activeFilterPill}
+                    onPress={() => setSelectedColor(null)}
+                  >
+                    <View
+                      style={[
+                        styles.colorFilterDot,
+                        { backgroundColor: getColorHex(selectedColor) },
+                        selectedColor.toLowerCase() === "white" && styles.colorDotBorder,
+                      ]}
+                    />
+                    <Text style={styles.activeFilterPillText}>{selectedColor}</Text>
+                    <Ionicons name="close-circle" size={13} color={colors.primaryDark} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Items List */}
@@ -573,26 +864,37 @@ export default function PublicWardrobeScreen() {
               </View>
             ) : sortedItems.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Ionicons name="lock-closed-outline" size={64} color={colors.textMuted} />
+                <Ionicons name="shirt-outline" size={64} color={colors.textMuted} />
                 <Text style={styles.emptyTitle}>
-                  {selectedCategory
-                    ? `No public items in "${selectedCategory}"`
-                    : "No public items available"
-                  }
+                  {selectedCategory || selectedColor
+                    ? "No items match your filter"
+                    : "No public items available"}
                 </Text>
                 <Text style={styles.emptySubtitle}>
-                  {selectedCategory
-                    ? "This user doesn't have public items in this category"
-                    : "This user hasn't made any items public yet"
-                  }
+                  {selectedCategory || selectedColor
+                    ? "Try resetting filters to view all public clothes"
+                    : "This user hasn't made any items public yet"}
                 </Text>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={() => router.back()}
-                >
-                  <Ionicons name="arrow-back" size={16} color={colors.primaryDark} />
-                  <Text style={styles.backButtonText}>Go Back</Text>
-                </TouchableOpacity>
+                {selectedCategory || selectedColor ? (
+                  <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => {
+                      setSelectedCategory(null);
+                      setSelectedColor(null);
+                    }}
+                  >
+                    <Ionicons name="refresh" size={16} color={colors.primaryDark} />
+                    <Text style={styles.backButtonText}>Reset Filters</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => router.back()}
+                  >
+                    <Ionicons name="arrow-back" size={16} color={colors.primaryDark} />
+                    <Text style={styles.backButtonText}>Go Back</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : isGridView ? (
               <View style={styles.gridContainer}>
@@ -605,98 +907,333 @@ export default function PublicWardrobeScreen() {
             )}
           </ScrollView>
 
-          {/* Sort Modal */}
+          {/* Modern Bottom Sheet Sort & Filter Modal */}
           <Modal
             animationType="slide"
             transparent
             visible={sortModalVisible}
             onRequestClose={() => setSortModalVisible(false)}
           >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Sort By</Text>
-                  <TouchableOpacity onPress={() => setSortModalVisible(false)}>
-                    <Ionicons name="close" size={24} color={colors.textPrimary} />
-                  </TouchableOpacity>
-                </View>
+            <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+              <View
+                style={[
+                  styles.modalContent,
+                  { backgroundColor: colors.surface, paddingBottom: insets.bottom + 12 },
+                ]}
+              >
+                {/* Grab handle */}
+                <View style={styles.sheetHandle} />
 
-                <View style={styles.sortSection}>
-                  <Text style={styles.sortSectionTitle}>By Date</Text>
-                  <View style={styles.sortButtons}>
-                    <TouchableOpacity
-                      style={[styles.sortBtn, sortBy === "dateNewest" && styles.activeSortBtn]}
-                      onPress={() => {
-                        setSortBy("dateNewest");
-                        setSortModalVisible(false);
-                      }}
-                    >
-                      <Text style={sortBy === "dateNewest" ? styles.activeSortText : styles.sortText}>
-                        Newest First
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.sortBtn, sortBy === "dateOldest" && styles.activeSortBtn]}
-                      onPress={() => {
-                        setSortBy("dateOldest");
-                        setSortModalVisible(false);
-                      }}
-                    >
-                      <Text style={sortBy === "dateOldest" ? styles.activeSortText : styles.sortText}>
-                        Oldest First
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.sortSection}>
-                  <Text style={styles.sortSectionTitle}>By Price</Text>
-                  <View style={styles.sortButtons}>
-                    <TouchableOpacity
-                      style={[styles.sortBtn, sortBy === "priceHigh" && styles.activeSortBtn]}
-                      onPress={() => {
-                        setSortBy("priceHigh");
-                        setSortModalVisible(false);
-                      }}
-                    >
-                      <Text style={sortBy === "priceHigh" ? styles.activeSortText : styles.sortText}>
-                        Price: High to Low
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.sortBtn, sortBy === "priceLow" && styles.activeSortBtn]}
-                      onPress={() => {
-                        setSortBy("priceLow");
-                        setSortModalVisible(false);
-                      }}
-                    >
-                      <Text style={sortBy === "priceLow" ? styles.activeSortText : styles.sortText}>
-                        Price: Low to High
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.sortSection}>
-                  <Text style={styles.sortSectionTitle}>By Name</Text>
-                  <TouchableOpacity
-                    style={[styles.sortBtn, sortBy === "nameAZ" && styles.activeSortBtn]}
-                    onPress={() => {
-                      setSortBy("nameAZ");
-                      setSortModalVisible(false);
-                    }}
-                  >
-                    <Text style={sortBy === "nameAZ" ? styles.activeSortText : styles.sortText}>
-                      Category A to Z
+                {/* Header */}
+                <View style={styles.modalHeaderNew}>
+                  <View>
+                    <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                      Sort & Filter
                     </Text>
-                  </TouchableOpacity>
+                    <Text style={styles.modalSubtitle}>Customize your wardrobe view</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    {isFilterOrSortActive && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSortBy("dateNewest");
+                          setSelectedColor(null);
+                        }}
+                        style={styles.resetSortBtn}
+                      >
+                        <Text style={styles.resetSortText}>Reset</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={styles.modalCloseCircle}
+                      onPress={() => setSortModalVisible(false)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close" size={18} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
+
+                <ScrollView showsVerticalScrollIndicator={false} style={styles.sortModalScroll}>
+                  {/* By Color Section */}
+                  <View style={styles.sortSection}>
+                    <View style={styles.sectionTitleRow}>
+                      <Ionicons name="color-palette" size={16} color={colors.primary} />
+                      <Text style={[styles.sortSectionTitle, { color: colors.textPrimary }]}>
+                        By Color
+                      </Text>
+                    </View>
+
+                    {/* Color A to Z */}
+                    <TouchableOpacity
+                      style={[
+                        styles.sortOptionCard,
+                        sortBy === "colorAZ" && styles.sortOptionCardActive,
+                      ]}
+                      onPress={() => setSortBy(sortBy === "colorAZ" ? "dateNewest" : "colorAZ")}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.sortOptionIconBox,
+                          sortBy === "colorAZ" && styles.sortOptionIconBoxActive,
+                        ]}
+                      >
+                        <Ionicons
+                          name="color-filter-outline"
+                          size={18}
+                          color={sortBy === "colorAZ" ? "#FFFFFF" : colors.primary}
+                        />
+                      </View>
+                      <View style={styles.sortOptionTextWrap}>
+                        <Text
+                          style={[
+                            styles.sortOptionLabel,
+                            sortBy === "colorAZ" && styles.sortOptionLabelActive,
+                          ]}
+                        >
+                          Color: A to Z
+                        </Text>
+                        <Text style={styles.sortOptionSublabel}>
+                          Group clothes by color name alphabetically
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={sortBy === "colorAZ" ? "checkmark-circle" : "ellipse-outline"}
+                        size={20}
+                        color={sortBy === "colorAZ" ? colors.primary : colors.textMuted}
+                      />
+                    </TouchableOpacity>
+
+                    {/* Specific Color filter chips */}
+                    {availableColors.length > 0 && (
+                      <View style={{ marginTop: 8 }}>
+                        <Text style={styles.subfilterLabel}>Filter by specific color:</Text>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.colorFilterScroll}
+                        >
+                          <TouchableOpacity
+                            style={[
+                              styles.colorFilterChip,
+                              selectedColor === null && styles.colorFilterChipActive,
+                            ]}
+                            onPress={() => setSelectedColor(null)}
+                          >
+                            <Text
+                              style={[
+                                styles.colorFilterChipText,
+                                selectedColor === null && styles.colorFilterChipTextActive,
+                              ]}
+                            >
+                              All Colors
+                            </Text>
+                          </TouchableOpacity>
+
+                          {availableColors.map((cName) => {
+                            const isChipActive =
+                              selectedColor?.toLowerCase() === cName.toLowerCase();
+                            const hex = getColorHex(cName);
+                            return (
+                              <TouchableOpacity
+                                key={cName}
+                                style={[
+                                  styles.colorFilterChip,
+                                  isChipActive && styles.colorFilterChipActive,
+                                ]}
+                                onPress={() =>
+                                  setSelectedColor(isChipActive ? null : cName)
+                                }
+                              >
+                                <View
+                                  style={[
+                                    styles.colorFilterDot,
+                                    { backgroundColor: hex },
+                                    cName.toLowerCase() === "white" && styles.colorDotBorder,
+                                  ]}
+                                />
+                                <Text
+                                  style={[
+                                    styles.colorFilterChipText,
+                                    isChipActive && styles.colorFilterChipTextActive,
+                                  ]}
+                                >
+                                  {cName}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Date Section */}
+                  <View style={styles.sortSection}>
+                    <View style={styles.sectionTitleRow}>
+                      <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.sortSectionTitle, { color: colors.textPrimary }]}>
+                        By Date
+                      </Text>
+                    </View>
+                    <View style={styles.sortOptionsGrid}>
+                      <TouchableOpacity
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "dateNewest" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("dateNewest")}
+                      >
+                        <Ionicons
+                          name="time-outline"
+                          size={16}
+                          color={sortBy === "dateNewest" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "dateNewest" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
+                          Newest First
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "dateOldest" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("dateOldest")}
+                      >
+                        <Ionicons
+                          name="hourglass-outline"
+                          size={16}
+                          color={sortBy === "dateOldest" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "dateOldest" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
+                          Oldest First
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Price Section */}
+                  <View style={styles.sortSection}>
+                    <View style={styles.sectionTitleRow}>
+                      <Ionicons name="cash-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.sortSectionTitle, { color: colors.textPrimary }]}>
+                        By Price
+                      </Text>
+                    </View>
+                    <View style={styles.sortOptionsGrid}>
+                      <TouchableOpacity
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "priceHigh" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("priceHigh")}
+                      >
+                        <Ionicons
+                          name="arrow-down-circle-outline"
+                          size={16}
+                          color={sortBy === "priceHigh" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "priceHigh" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
+                          High to Low
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.sortGridOption,
+                          sortBy === "priceLow" && styles.sortGridOptionActive,
+                        ]}
+                        onPress={() => setSortBy("priceLow")}
+                      >
+                        <Ionicons
+                          name="arrow-up-circle-outline"
+                          size={16}
+                          color={sortBy === "priceLow" ? colors.primary : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.sortGridOptionText,
+                            sortBy === "priceLow" && styles.sortGridOptionTextActive,
+                          ]}
+                        >
+                          Low to High
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Name Section */}
+                  <View style={styles.sortSection}>
+                    <View style={styles.sectionTitleRow}>
+                      <Ionicons name="text-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.sortSectionTitle, { color: colors.textPrimary }]}>
+                        By Name
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.sortOptionCard,
+                        sortBy === "nameAZ" && styles.sortOptionCardActive,
+                      ]}
+                      onPress={() => setSortBy(sortBy === "nameAZ" ? "dateNewest" : "nameAZ")}
+                    >
+                      <View
+                        style={[
+                          styles.sortOptionIconBox,
+                          sortBy === "nameAZ" && styles.sortOptionIconBoxActive,
+                        ]}
+                      >
+                        <Ionicons
+                          name="text-outline"
+                          size={18}
+                          color={sortBy === "nameAZ" ? "#FFFFFF" : colors.primary}
+                        />
+                      </View>
+                      <View style={styles.sortOptionTextWrap}>
+                        <Text
+                          style={[
+                            styles.sortOptionLabel,
+                            sortBy === "nameAZ" && styles.sortOptionLabelActive,
+                          ]}
+                        >
+                          Category: A to Z
+                        </Text>
+                        <Text style={styles.sortOptionSublabel}>
+                          Sort items by category name alphabetically
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={sortBy === "nameAZ" ? "checkmark-circle" : "ellipse-outline"}
+                        size={20}
+                        color={sortBy === "nameAZ" ? colors.primary : colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
 
                 <TouchableOpacity
-                  style={styles.closeModalBtn}
+                  style={styles.applySortBtn}
                   onPress={() => setSortModalVisible(false)}
+                  activeOpacity={0.85}
                 >
-                  <Text style={styles.closeModalText}>Cancel</Text>
+                  <Text style={styles.applySortBtnText}>Done</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -712,7 +1249,6 @@ const createStyles = (colors: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      // backgroundColor: colors.background,
     },
 
     // Header
@@ -721,6 +1257,7 @@ const createStyles = (colors: any) =>
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 16,
+      paddingVertical: 12,
       backgroundColor: colors.background,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
@@ -750,7 +1287,7 @@ const createStyles = (colors: any) =>
     headerActions: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 16,
+      gap: 12,
     },
     sortButton: {
       flexDirection: "row",
@@ -759,19 +1296,36 @@ const createStyles = (colors: any) =>
       paddingVertical: 6,
       backgroundColor: colors.card,
       borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
       gap: 6,
+      position: "relative",
+    },
+    sortButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
     },
     sortButtonText: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.primary,
       fontWeight: "600",
+    },
+    sortButtonTextActive: {
+      color: "#FFFFFF",
+      fontWeight: "700",
+    },
+    sortActiveDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: "#FFFFFF",
     },
 
     // Categories Section
     categoriesSection: {
       backgroundColor: colors.background,
-      paddingTop: 16,
-      paddingBottom: 12,
+      paddingTop: 14,
+      paddingBottom: 10,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -780,37 +1334,37 @@ const createStyles = (colors: any) =>
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 16,
-      marginBottom: 12,
+      marginBottom: 10,
     },
     categoriesTitle: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: "700",
       color: colors.textPrimary,
     },
     clearFilterButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
       backgroundColor: colors.card,
       borderRadius: 12,
     },
     clearFilterText: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.textMuted,
       fontWeight: "600",
     },
     categoriesScrollView: {
       paddingLeft: 16,
-      paddingTop: 2,
     },
     categoriesContent: {
       paddingRight: 16,
-      gap: 12,
+      gap: 14,
     },
 
     // Category Chips
     categoryChip: {
       alignItems: "center",
       width: 70,
+      overflow: "visible",
     },
     categoryChipSelected: {
       transform: [{ scale: 1.05 }],
@@ -819,54 +1373,59 @@ const createStyles = (colors: any) =>
       width: 56,
       height: 56,
       borderRadius: 28,
-      backgroundColor: colors.card,
+      backgroundColor: colors.surface,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: 6,
       position: "relative",
-      borderWidth: 2,
-      borderColor: "transparent",
+      borderWidth: 1.5,
+      borderColor: colors.border,
     },
     categoryIconContainerSelected: {
       backgroundColor: colors.primary,
-      borderColor: colors.background,
+      borderColor: colors.primary,
       shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.35,
       shadowRadius: 6,
       elevation: 6,
-      
     },
     categoryIcon: {
       width: 28,
       height: 28,
       resizeMode: "contain",
+      tintColor: colors.primary,
     },
     categoryIconSelected: {
-      tintColor: colors.primaryDark,
+      tintColor: "#FFFFFF",
     },
     categoryCountBadge: {
       position: "absolute",
-      top: -4,
-      right: -4,
+      top: -3,
+      right: -3,
       backgroundColor: colors.primary,
-      borderRadius: 10,
-      minWidth: 20,
-      height: 20,
+      borderRadius: 11,
+      minWidth: 22,
+      height: 22,
       justifyContent: "center",
       alignItems: "center",
       paddingHorizontal: 4,
+      borderWidth: 1.5,
+      borderColor: colors.surface,
+      zIndex: 10,
+      elevation: 3,
     },
     categoryCountBadgeSelected: {
-      backgroundColor: colors.primaryDark,
+      backgroundColor: "#FFFFFF",
+      borderColor: colors.primary,
     },
     categoryCountText: {
-      color: colors.textLight,
+      color: "#FFFFFF",
       fontSize: 10,
       fontWeight: "700",
     },
     categoryCountTextSelected: {
-      color: colors.textLight,
+      color: colors.primary,
     },
     categoryChipLabel: {
       fontSize: 11,
@@ -880,16 +1439,137 @@ const createStyles = (colors: any) =>
       fontWeight: "700",
     },
 
+    // Colors Section
+    colorsSection: {
+      paddingTop: 8,
+      paddingBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    colorsHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      marginBottom: 6,
+    },
+    colorsTitle: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textMuted,
+    },
+    clearColorText: {
+      fontSize: 11,
+      color: colors.primary,
+      fontWeight: "600",
+    },
+    colorsScrollView: {
+      paddingLeft: 16,
+    },
+    colorsContent: {
+      paddingRight: 16,
+      gap: 10,
+    },
+    colorSwatchChip: {
+      alignItems: "center",
+      width: 48,
+    },
+    colorSwatchChipSelected: {
+      transform: [{ scale: 1.05 }],
+    },
+    colorSwatchCircle: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: colors.border,
+      marginBottom: 3,
+      position: "relative",
+    },
+    colorSwatchCircleSelected: {
+      borderColor: colors.primary,
+      borderWidth: 2.5,
+    },
+    whiteColorBorder: {
+      borderColor: colors.border,
+    },
+    colorSwatchBadge: {
+      position: "absolute",
+      top: -3,
+      right: -3,
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      minWidth: 15,
+      height: 15,
+      paddingHorizontal: 3,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    colorSwatchBadgeSelected: {
+      backgroundColor: colors.primaryDark,
+    },
+    colorSwatchBadgeText: {
+      color: "#FFFFFF",
+      fontSize: 9,
+      fontWeight: "700",
+    },
+    colorSwatchLabel: {
+      fontSize: 10,
+      color: colors.textSecondary,
+      fontWeight: "600",
+      textAlign: "center",
+    },
+    colorSwatchLabelSelected: {
+      color: colors.primaryDark,
+      fontWeight: "700",
+    },
+
     // Results Info
     resultsInfo: {
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingVertical: 10,
       backgroundColor: colors.card,
     },
+    resultsHeaderRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
     resultsText: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.textSecondary,
-      fontWeight: "500",
+      fontWeight: "600",
+    },
+    clearAllFiltersText: {
+      fontSize: 12,
+      color: colors.danger,
+      fontWeight: "600",
+    },
+    activeFilterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      flexWrap: "wrap",
+      marginTop: 6,
+    },
+    activeFilterPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: colors.primary + "15",
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    activeFilterPillText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.primaryDark,
     },
 
     // Items Container
@@ -898,55 +1578,7 @@ const createStyles = (colors: any) =>
     },
     itemsContent: {
       padding: 16,
-    },
-
-    // Loading State
-    loadingContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      paddingTop: 100,
-    },
-    loadingText: {
-      fontSize: 16,
-      color: colors.textMuted,
-      marginTop: 16,
-    },
-
-    // Empty State
-    emptyContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingTop: 100,
-    },
-    emptyTitle: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: colors.textPrimary,
-      marginTop: 20,
-      textAlign: "center",
-    },
-    emptySubtitle: {
-      fontSize: 14,
-      color: colors.textMuted,
-      textAlign: "center",
-      marginTop: 8,
-      maxWidth: 250,
-    },
-    backButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.primary,
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 12,
-      marginTop: 24,
-      gap: 8,
-    },
-    backButtonText: {
-      color: colors.primaryDark,
-      fontSize: 14,
-      fontWeight: "600",
+      paddingBottom: 40,
     },
 
     // Grid View
@@ -954,90 +1586,117 @@ const createStyles = (colors: any) =>
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
+      gap: 12,
     },
     gridItem: {
-      width: "48%",
+      width: (SCREEN_WIDTH - 44) / 2,
       backgroundColor: colors.surface,
       borderRadius: 16,
-      marginBottom: 16,
       overflow: "hidden",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      marginBottom: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      elevation: 2,
     },
     gridImageContainer: {
-      position: "relative",
       width: "100%",
-      height: 160,
+      height: (SCREEN_WIDTH - 44) / 2,
+      position: "relative",
     },
     gridImage: {
       width: "100%",
       height: "100%",
+      resizeMode: "cover",
     },
     gridCategoryBadge: {
       position: "absolute",
-      top: 10,
-      left: 10,
-      backgroundColor: colors.overlay,
+      top: 8,
+      left: 8,
+      backgroundColor: "rgba(0,0,0,0.6)",
       paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingVertical: 3,
       borderRadius: 8,
     },
     gridCategoryText: {
-      color: "#fff",
       fontSize: 10,
+      color: "#FFFFFF",
       fontWeight: "600",
     },
     publicBadge: {
       position: "absolute",
-      top: 10,
-      right: 10,
-      backgroundColor: colors.success,
+      top: 8,
+      right: 8,
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
-      gap: 4,
+      backgroundColor: "rgba(16, 185, 129, 0.85)",
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      gap: 2,
     },
     publicBadgeText: {
-      color: "#fff",
-      fontSize: 10,
-      fontWeight: "600",
+      fontSize: 9,
+      color: "#FFFFFF",
+      fontWeight: "700",
     },
     gridItemInfo: {
-      padding: 12,
+      padding: 10,
     },
     gridItemHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: 4,
+      alignItems: "center",
+      marginBottom: 3,
     },
     gridItemName: {
       fontSize: 14,
       fontWeight: "700",
       color: colors.textPrimary,
       flex: 1,
-      marginRight: 8,
+      marginRight: 4,
     },
     gridItemPrice: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: "800",
       color: colors.primary,
+    },
+    brandAndColorRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 4,
     },
     gridItemBrand: {
       fontSize: 12,
       color: colors.textMuted,
-      marginBottom: 6,
+      flex: 1,
+    },
+    itemColorTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: colors.card,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    itemColorDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    itemColorTagText: {
+      fontSize: 10,
+      color: colors.textSecondary,
+      fontWeight: "600",
     },
     gridItemDescription: {
       fontSize: 11,
       color: colors.textSecondary,
       lineHeight: 14,
-      marginBottom: 8,
+      marginBottom: 4,
     },
     gridItemDate: {
       fontSize: 10,
@@ -1054,10 +1713,8 @@ const createStyles = (colors: any) =>
       borderRadius: 16,
       padding: 12,
       alignItems: "center",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
+      borderWidth: 1,
+      borderColor: colors.border,
       elevation: 2,
     },
     listImage: {
@@ -1097,7 +1754,6 @@ const createStyles = (colors: any) =>
     listItemBrand: {
       fontSize: 13,
       color: colors.textMuted,
-      marginRight: 8,
     },
     listPublicIndicator: {
       flexDirection: "row",
@@ -1117,7 +1773,7 @@ const createStyles = (colors: any) =>
       fontSize: 12,
       color: colors.textSecondary,
       lineHeight: 16,
-      marginBottom: 8,
+      marginBottom: 6,
     },
     listItemFooter: {
       flexDirection: "row",
@@ -1129,81 +1785,260 @@ const createStyles = (colors: any) =>
       color: colors.textMuted,
     },
 
-    // Sort Modal
+    // Empty / Loading
+    loadingContainer: {
+      paddingVertical: 60,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.textMuted,
+      marginTop: 12,
+    },
+    emptyContainer: {
+      paddingVertical: 60,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+    },
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginTop: 16,
+      textAlign: "center",
+    },
+    emptySubtitle: {
+      fontSize: 13,
+      color: colors.textMuted,
+      marginTop: 8,
+      textAlign: "center",
+      lineHeight: 18,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 20,
+      marginTop: 20,
+    },
+    backButtonText: {
+      color: colors.primaryDark,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+
+    // Modern Sort Bottom Sheet
     modalOverlay: {
       flex: 1,
-      backgroundColor: colors.overlay,
       justifyContent: "flex-end",
     },
     modalContent: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      paddingBottom: 30,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingTop: 8,
     },
-    modalHeader: {
+    sheetHandle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+      alignSelf: "center",
+      marginTop: 6,
+      marginBottom: 6,
+    },
+    modalHeaderNew: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingVertical: 12,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     modalTitle: {
       fontSize: 18,
       fontWeight: "700",
-      color: colors.textPrimary,
+    },
+    modalSubtitle: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    modalCloseCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.card,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    resetSortBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: colors.danger + "15",
+      marginRight: 8,
+    },
+    resetSortText: {
+      fontSize: 12,
+      color: colors.danger,
+      fontWeight: "600",
+    },
+    sortModalScroll: {
+      maxHeight: 460,
     },
     sortSection: {
       paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingVertical: 14,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
+    sectionTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 10,
+    },
     sortSectionTitle: {
       fontSize: 14,
-      fontWeight: "600",
-      color: colors.textSecondary,
-      marginBottom: 12,
+      fontWeight: "700",
     },
-    sortButtons: {
+    sortOptionCard: {
       flexDirection: "row",
-      gap: 12,
-    },
-    sortBtn: {
-      flex: 1,
-      padding: 14,
-      borderRadius: 12,
-      backgroundColor: colors.card,
       alignItems: "center",
+      backgroundColor: colors.card,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 8,
     },
-    activeSortBtn: {
+    sortOptionCardActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.cardHover || colors.surface,
+      borderWidth: 1.5,
+    },
+    sortOptionIconBox: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surface,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+    },
+    sortOptionIconBoxActive: {
       backgroundColor: colors.primary,
     },
-    sortText: {
-      color: colors.textSecondary,
-      fontWeight: "600",
+    sortOptionTextWrap: {
+      flex: 1,
+    },
+    sortOptionLabel: {
       fontSize: 14,
-    },
-    activeSortText: {
-      color: colors.textLight,
       fontWeight: "600",
-      fontSize: 14,
-    },
-    closeModalBtn: {
-      marginHorizontal: 20,
-      marginTop: 20,
-      padding: 14,
-      alignItems: "center",
-      backgroundColor: colors.card,
-      borderRadius: 12,
-      marginBottom:25
-
-    },
-    closeModalText: {
       color: colors.textPrimary,
+    },
+    sortOptionLabelActive: {
+      color: colors.primaryDark,
+      fontWeight: "700",
+    },
+    sortOptionSublabel: {
+      fontSize: 11,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    sortOptionsGrid: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    sortGridOption: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 14,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sortGridOptionActive: {
+      backgroundColor: colors.cardHover || colors.surface,
+      borderColor: colors.primary,
+      borderWidth: 1.5,
+    },
+    sortGridOptionText: {
+      fontSize: 13,
       fontWeight: "600",
-      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    sortGridOptionTextActive: {
+      color: colors.primaryDark,
+      fontWeight: "700",
+    },
+    subfilterLabel: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginBottom: 8,
+      fontWeight: "500",
+    },
+    colorFilterScroll: {
+      flexDirection: "row",
+      gap: 8,
+      paddingVertical: 4,
+    },
+    colorFilterChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 14,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    colorFilterChipActive: {
+      backgroundColor: colors.primary + "15",
+      borderColor: colors.primary,
+    },
+    colorFilterChipText: {
+      fontSize: 12,
+      fontWeight: "500",
+      color: colors.textSecondary,
+    },
+    colorFilterChipTextActive: {
+      color: colors.primaryDark,
+      fontWeight: "700",
+    },
+    colorFilterDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+    },
+    colorDotBorder: {
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    applySortBtn: {
+      backgroundColor: colors.addButton || colors.primary,
+      paddingVertical: 14,
+      borderRadius: 24,
+      alignItems: "center",
+      marginHorizontal: 20,
+      marginTop: 12,
+    },
+    applySortBtnText: {
+      color: "#FFFFFF",
+      fontSize: 15,
+      fontWeight: "700",
     },
   });
