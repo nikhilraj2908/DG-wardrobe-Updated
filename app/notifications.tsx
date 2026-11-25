@@ -150,6 +150,20 @@ export default function NotificationsScreen() {
                                         }
                                         return;
                                     }
+                                    if (item.type === "premium_request") {
+                                        router.push("/premium/requests" as any);
+                                        return;
+                                    }
+                                    if (item.type === "premium_approved") {
+                                        if (item.item) {
+                                            router.push(`/wardrobe/item/${item.item}` as any);
+                                            return;
+                                        }
+                                        if (item.actor?._id) {
+                                            router.push(`/profile/${item.actor._id}`);
+                                            return;
+                                        }
+                                    }
                                     if (item.item) {
                                         if (item.type === "comment") {
                                             router.push({

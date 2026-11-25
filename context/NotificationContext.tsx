@@ -44,8 +44,11 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
       console.log("👆 User tapped notification shutter with data:", data);
 
-      if (data?.itemId) {
-        // Outfit or clothing item like/comment
+      if (data?.type === "premium_request") {
+        // Access request -> redirect to premium requests approval screen
+        router.push("/premium/requests" as any);
+      } else if (data?.itemId) {
+        // Outfit or clothing item like/comment/approved access
         router.push(`/wardrobe/item/${data.itemId}`);
       } else if (data?.userId) {
         // Follow notification -> redirect to user's public profile
