@@ -113,11 +113,39 @@ export default function HomeScreen() {
       });
 
       console.log("📱 Stories loaded:", JSON.stringify(res.data, null, 2));
-      setStories(res.data);
+      let fetchedStories: StoryGroup[] = res.data || [];
+
+      // 🌟 Always prioritize user's own active stories to appear in 1st place
+      if (currentUserId && fetchedStories.length > 1) {
+        const myIndex = fetchedStories.findIndex(
+          (g) => String(g.user._id) === String(currentUserId)
+        );
+        if (myIndex > 0) {
+          const [myGroup] = fetchedStories.splice(myIndex, 1);
+          fetchedStories.unshift(myGroup);
+        }
+      }
+
+      setStories(fetchedStories);
     } catch (err) {
       console.error("Story load error:", err);
     }
   };
+
+  // Re-order stories if currentUserId becomes available after initial stories load
+  useEffect(() => {
+    if (currentUserId && stories.length > 1) {
+      const myIndex = stories.findIndex(
+        (g) => String(g.user._id) === String(currentUserId)
+      );
+      if (myIndex > 0) {
+        const reordered = [...stories];
+        const [myGroup] = reordered.splice(myIndex, 1);
+        reordered.unshift(myGroup);
+        setStories(reordered);
+      }
+    }
+  }, [currentUserId]);
 
   const loadMe = async () => {
     try {
@@ -373,6 +401,7 @@ export default function HomeScreen() {
         {stories.map((group, index) => {
           const coverImage = getStoryCoverImage(group);
           const userPhotoUrl = getUserPhotoUrl(group.user.photo);
+          const isMyStory = !!(currentUserId && String(group.user._id) === String(currentUserId));
 
           return (
             <TouchableOpacity
@@ -385,7 +414,7 @@ export default function HomeScreen() {
                 })
               }
             >
-              <View style={styles.userStoryWrapper}>
+              <View style={[styles.userStoryWrapper, isMyStory && { borderColor: colors.primary, borderWidth: 2 }]}>
                 {/* Story Image Container */}
                 <View style={styles.storyImageContainer}>
                   {coverImage ? (
@@ -407,8 +436,14 @@ export default function HomeScreen() {
                   )}
                 </View>
               </View>
-              <Text style={styles.storyName} numberOfLines={1}>
-                {group.user.username}
+              <Text
+                style={[
+                  styles.storyName,
+                  isMyStory && { fontWeight: "700", color: colors.primary },
+                ]}
+                numberOfLines={1}
+              >
+                {isMyStory ? "Your Story" : group.user.username}
               </Text>
             </TouchableOpacity>
           );

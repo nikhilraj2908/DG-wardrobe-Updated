@@ -65,39 +65,48 @@ export default function StoryView() {
   const [loadingViewers, setLoadingViewers] = useState(false);
 
   // Load stories and current user ID
-useEffect(() => {
-  const load = async () => {
-    // Decode token to get user ID
-    const token = await storage.getItem("token");
-    if (token) {
-      try {
-        // Split the token and decode the payload
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(
-          atob(base64)
-            .split('')
-            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-            .join('')
-        );
-        const payload = JSON.parse(jsonPayload);
-        console.log("📦 Decoded token payload:", payload);
-        setCurrentUserId(payload.id); // the payload contains "id"
-      } catch (e) {
-        console.error("❌ Failed to decode token", e);
-      }
-    } else {
-      console.log("❌ No token found in AsyncStorage");
-    }
+  useEffect(() => {
+    const load = async () => {
+      const token = await storage.getItem("token");
+      if (token) {
+        try {
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          const payload = JSON.parse(jsonPayload);
+          const uid = payload.id || payload._id || payload.userId || payload.sub;
+          if (uid) setCurrentUserId(String(uid));
+        } catch (e) {
+          console.error("❌ Failed to decode token", e);
+        }
 
-    // Fetch stories
-    const res = await api.get("/api/story");
-    console.log("📦 Loaded story groups:", res.data);
-    setGroups(res.data);
-    setLoading(false);
-  };
-  load();
-}, []);
+        try {
+          const meRes = await api.get("/api/user/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (meRes.data?._id) {
+            setCurrentUserId(String(meRes.data._id));
+          }
+        } catch (meErr) {
+          console.log("Could not load /api/user/me in story view", meErr);
+        }
+      }
+
+      // Fetch stories
+      const res = await api.get("/api/story", {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      setGroups(res.data);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
   // Derived data
   const group = groups[userIndex];
   const story = group?.stories?.[storyIndex];
@@ -129,24 +138,15 @@ useEffect(() => {
         : [];
 
   const isComboStory = story?.storyType === "combo" && rawComboItems.length > 0;
-  // With this:
+
   const getOwnerId = (user: any): string | null => {
     if (!user) return null;
-    // If user is a plain string (just the ID)
     if (typeof user === 'string') return user;
-    // If user is an object, try _id or id
-    return user._id || user.id || null;
+    return user._id ? String(user._id) : user.id ? String(user.id) : null;
   };
 
-  const ownerId = getOwnerId(group?.user);
-  const isOwner = !!(currentUserId && ownerId && String(currentUserId) === String(ownerId));
-
-  // Enhanced debug
-  console.log("🧑 currentUserId:", currentUserId, "type:", typeof currentUserId);
-  console.log("👤 group.user:", group?.user, "type:", typeof group?.user);
-  console.log("👑 ownerId:", ownerId, "type:", typeof ownerId);
-  console.log("🔍 isOwner:", isOwner);
-  console.log("📖 story viewers array:", story?.viewers);
+  const storyOwnerId = getOwnerId(story?.user) || getOwnerId(group?.user);
+  const isOwner = !!(currentUserId && storyOwnerId && String(currentUserId) === String(storyOwnerId));
   // Mark story as viewed
   useEffect(() => {
     if (story?._id) {
@@ -223,15 +223,18 @@ useEffect(() => {
   // ----- FETCH VIEWERS (owner only) -----
   const fetchViewers = async () => {
     if (!isOwner || !story?._id) {
-      Alert.alert("Only the owner can see viewers");
       return;
     }
     try {
       setLoadingViewers(true);
+      setPaused(true);
+      const token = await storage.getItem("token");
       console.log("📡 Fetching viewers for story:", story._id);
-      const res = await api.get(`/api/story/${story._id}/viewers`);
+      const res = await api.get(`/api/story/${story._id}/viewers`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       console.log("👥 Viewers data:", res.data);
-      setViewersList(res.data);
+      setViewersList(res.data || []);
       setViewersModalVisible(true);
     } catch (err: any) {
       console.error("❌ Fetch viewers error:", err.response?.data || err.message);
@@ -433,49 +436,90 @@ useEffect(() => {
           </TouchableOpacity>
         )}
 
-        {/* Views - clickable only for owner */}
-        <TouchableOpacity
-          style={styles.viewsContainer}
-          onPress={fetchViewers}
-          disabled={!isOwner || loadingViewers}
-        >
-          <Text style={styles.views}>
-            👁 {story.viewers?.length || 0} views
-            {isOwner && "  •  tap to see who"}
-          </Text>
-          {loadingViewers && (
-            <ActivityIndicator size="small" color="#fff" style={{ marginLeft: 8 }} />
-          )}
-        </TouchableOpacity>
+        {/* Views - STRICTLY VISIBLE ONLY FOR STORY OWNER */}
+        {isOwner && (
+          <TouchableOpacity
+            style={styles.viewsContainer}
+            onPress={fetchViewers}
+            disabled={loadingViewers}
+            activeOpacity={0.8}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons name="eye-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.views}>
+                {story.viewers?.length || 0} {story.viewers?.length === 1 ? "view" : "views"}
+                {"  •  Tap to see who"}
+              </Text>
+              {loadingViewers && (
+                <ActivityIndicator size="small" color="#fff" style={{ marginLeft: 8 }} />
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Viewers Modal */}
+      {/* Viewers Modal (Owner Only) */}
       <Modal
         visible={viewersModalVisible}
         animationType="slide"
         transparent
-        onRequestClose={() => setViewersModalVisible(false)}
+        onRequestClose={() => {
+          setViewersModalVisible(false);
+          setPaused(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Story Views</Text>
-              <Pressable onPress={() => setViewersModalVisible(false)}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name="eye-outline" size={20} color="#333" />
+                <Text style={styles.modalTitle}>
+                  Story Views ({viewersList.length})
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setViewersModalVisible(false);
+                  setPaused(false);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Ionicons name="close" size={24} color="#333" />
               </Pressable>
             </View>
 
             <FlatList
               data={viewersList}
-              keyExtractor={(item) => item._id}
+              keyExtractor={(item) => item._id || item.username}
               renderItem={({ item }) => (
-                <View style={styles.viewerItem}>
-                  <Image
-                    source={{ uri: resolveImageUrl(item.photo) }}
-                    style={styles.viewerAvatar}
-                  />
-                  <Text style={styles.viewerName}>{item.username}</Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.viewerItem}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setViewersModalVisible(false);
+                    setPaused(false);
+                    if (item._id) {
+                      router.push(`/profile/${item._id}`);
+                    }
+                  }}
+                >
+                  {item.photo ? (
+                    <Image
+                      source={{ uri: resolveImageUrl(item.photo) }}
+                      style={styles.viewerAvatar}
+                    />
+                  ) : (
+                    <View style={[styles.viewerAvatar, { backgroundColor: "#7C3AED", justifyContent: "center", alignItems: "center" }]}>
+                      <Text style={{ color: "#fff", fontWeight: "700" }}>
+                        {item.username ? item.username[0].toUpperCase() : "U"}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.viewerName}>{item.username}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#999" />
+                </TouchableOpacity>
               )}
               ListEmptyComponent={
                 <Text style={styles.emptyText}>
