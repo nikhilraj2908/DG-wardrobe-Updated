@@ -66,6 +66,7 @@ interface DraggableGarmentProps {
   isSelected: boolean;
   onSelect: (instanceId: string) => void;
   onUpdatePosition: (instanceId: string, x: number, y: number) => void;
+  onUpdateScale: (instanceId: string, scale: number) => void;
   onRemove: (instanceId: string) => void;
   primaryColor: string;
 }
@@ -75,38 +76,119 @@ const DraggableGarment: React.FC<DraggableGarmentProps> = ({
   isSelected,
   onSelect,
   onUpdatePosition,
+  onUpdateScale,
   onRemove,
   primaryColor,
 }) => {
   const pan = useRef(new Animated.ValueXY({ x: garment.x, y: garment.y })).current;
+  const scaleAnim = useRef(new Animated.Value(garment.scale)).current;
+
+  // Gesture tracking refs
+  const currentScaleRef = useRef(garment.scale);
+  const initialPinchDistRef = useRef<number | null>(null);
+  const initialScaleRef = useRef(garment.scale);
+  const isPinchingRef = useRef(false);
 
   // Sync pan when x or y prop changes
   useEffect(() => {
     pan.setValue({ x: garment.x, y: garment.y });
   }, [garment.x, garment.y]);
 
+  // Sync scale when garment.scale changes externally (via stepper buttons)
+  useEffect(() => {
+    scaleAnim.setValue(garment.scale);
+    currentScaleRef.current = garment.scale;
+  }, [garment.scale]);
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2;
+        return (
+          Math.abs(gestureState.dx) > 1 ||
+          Math.abs(gestureState.dy) > 1 ||
+          gestureState.numberActiveTouches > 1
+        );
       },
-      onPanResponderGrant: () => {
+      onPanResponderGrant: (evt) => {
         onSelect(garment.instanceId);
-        pan.setOffset({
-          x: (pan.x as any)._value,
-          y: (pan.y as any)._value,
-        });
-        pan.setValue({ x: 0, y: 0 });
+        const touches = evt.nativeEvent.touches;
+        if (touches && touches.length >= 2) {
+          isPinchingRef.current = true;
+          const dist = Math.hypot(
+            touches[0].pageX - touches[1].pageX,
+            touches[0].pageY - touches[1].pageY
+          );
+          initialPinchDistRef.current = dist > 0 ? dist : 1;
+          initialScaleRef.current = currentScaleRef.current;
+        } else {
+          isPinchingRef.current = false;
+          initialPinchDistRef.current = null;
+          pan.setOffset({
+            x: (pan.x as any)._value,
+            y: (pan.y as any)._value,
+          });
+          pan.setValue({ x: 0, y: 0 });
+        }
       },
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
-        useNativeDriver: false,
-      }),
+      onPanResponderMove: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches && touches.length >= 2) {
+          // 2-FINGER PINCH-TO-RESIZE
+          const currentDist = Math.hypot(
+            touches[0].pageX - touches[1].pageX,
+            touches[0].pageY - touches[1].pageY
+          );
+          if (!isPinchingRef.current || !initialPinchDistRef.current) {
+            isPinchingRef.current = true;
+            initialPinchDistRef.current = currentDist > 0 ? currentDist : 1;
+            initialScaleRef.current = currentScaleRef.current;
+          } else if (initialPinchDistRef.current > 0) {
+            const factor = currentDist / initialPinchDistRef.current;
+            const newScale = Math.min(Math.max(0.4, initialScaleRef.current * factor), 2.5);
+            currentScaleRef.current = Number(newScale.toFixed(2));
+            scaleAnim.setValue(newScale);
+          }
+        } else if (touches && touches.length === 1) {
+          if (isPinchingRef.current) {
+            // User released one finger after pinching: lock in scale and resume dragging
+            isPinchingRef.current = false;
+            initialPinchDistRef.current = null;
+            onUpdateScale(garment.instanceId, currentScaleRef.current);
+            pan.setOffset({
+              x: (pan.x as any)._value,
+              y: (pan.y as any)._value,
+            });
+            pan.setValue({ x: 0, y: 0 });
+          } else {
+            // Standard 1-finger drag
+            pan.setValue({ x: gestureState.dx, y: gestureState.dy });
+          }
+        }
+      },
       onPanResponderRelease: () => {
-        pan.flattenOffset();
-        const currentX = (pan.x as any)._value;
-        const currentY = (pan.y as any)._value;
-        onUpdatePosition(garment.instanceId, currentX, currentY);
+        if (isPinchingRef.current) {
+          isPinchingRef.current = false;
+          initialPinchDistRef.current = null;
+          onUpdateScale(garment.instanceId, currentScaleRef.current);
+        } else {
+          pan.flattenOffset();
+          const currentX = (pan.x as any)._value;
+          const currentY = (pan.y as any)._value;
+          onUpdatePosition(garment.instanceId, currentX, currentY);
+        }
+      },
+      onPanResponderTerminate: () => {
+        if (isPinchingRef.current) {
+          isPinchingRef.current = false;
+          initialPinchDistRef.current = null;
+          onUpdateScale(garment.instanceId, currentScaleRef.current);
+        } else {
+          pan.flattenOffset();
+          const currentX = (pan.x as any)._value;
+          const currentY = (pan.y as any)._value;
+          onUpdatePosition(garment.instanceId, currentX, currentY);
+        }
       },
     })
   ).current;
@@ -119,19 +201,19 @@ const DraggableGarment: React.FC<DraggableGarmentProps> = ({
     "";
   const imageUri = resolveImageUrl(rawImg);
 
-  const displayWidth = garment.width * garment.scale;
-  const displayHeight = garment.height * garment.scale;
-
   return (
     <Animated.View
       {...panResponder.panHandlers}
       style={[
         styles.draggableItemContainer,
         {
-          transform: pan.getTranslateTransform(),
+          transform: [
+            ...pan.getTranslateTransform(),
+            { scale: scaleAnim },
+          ],
           zIndex: garment.zIndex,
-          width: displayWidth,
-          height: displayHeight,
+          width: garment.width,
+          height: garment.height,
         },
       ]}
     >
@@ -357,6 +439,12 @@ export default function MatchPairScreen() {
   const handleUpdatePosition = (instanceId: string, x: number, y: number) => {
     setCanvasGarments((prev) =>
       prev.map((g) => (g.instanceId === instanceId ? { ...g, x, y } : g))
+    );
+  };
+
+  const handleUpdateScale = (instanceId: string, scale: number) => {
+    setCanvasGarments((prev) =>
+      prev.map((g) => (g.instanceId === instanceId ? { ...g, scale } : g))
     );
   };
 
@@ -744,6 +832,7 @@ export default function MatchPairScreen() {
                 isSelected={selectedInstanceId === garment.instanceId}
                 onSelect={(id) => setSelectedInstanceId(id)}
                 onUpdatePosition={handleUpdatePosition}
+                onUpdateScale={handleUpdateScale}
                 onRemove={handleRemoveGarment}
                 primaryColor={colors.primary}
               />
@@ -813,9 +902,14 @@ export default function MatchPairScreen() {
           {activeGarment ? (
             <View style={[styles.adjustmentToolbar, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.toolTitleRow}>
-                <Text style={[styles.toolActiveName, { color: colors.textPrimary }]} numberOfLines={1}>
-                  Adjusting: {typeof activeGarment.item.category === "object" ? activeGarment.item.category?.name : activeGarment.item.category || "Item"}
-                </Text>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={[styles.toolActiveName, { color: colors.textPrimary }]} numberOfLines={1}>
+                    Adjusting: {typeof activeGarment.item.category === "object" ? activeGarment.item.category?.name : activeGarment.item.category || "Item"}
+                  </Text>
+                  <Text style={[styles.toolGestureHint, { color: colors.textMuted }]}>
+                    🤏 Pinch with 2 fingers to resize, or use buttons below
+                  </Text>
+                </View>
                 <Text style={styles.toolSizeBadge}>
                   {Math.round(activeGarment.scale * 100)}%
                 </Text>
@@ -1291,7 +1385,11 @@ const styles = StyleSheet.create({
   toolActiveName: {
     fontSize: 12,
     fontWeight: "600",
-    flex: 1,
+  },
+  toolGestureHint: {
+    fontSize: 10,
+    marginTop: 2,
+    fontWeight: "500",
   },
   toolSizeBadge: {
     fontSize: 11,
