@@ -19,6 +19,7 @@ export default ({ config }) => ({
       "VIBRATE",
       "READ_EXTERNAL_STORAGE",
       "WRITE_EXTERNAL_STORAGE",
+      "POST_NOTIFICATIONS",
     ],
     adaptiveIcon: {
       foregroundImage: "./assets/images/android-icon-foreground.png",
