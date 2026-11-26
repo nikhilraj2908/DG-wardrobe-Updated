@@ -23,6 +23,7 @@ import { storage } from "@/utils/storage";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { promptShareToStory } from "@/utils/shareToStory";
 import AppBackground from "@/components/AppBackground";
+import ImagePicker from "react-native-image-crop-picker";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CANVAS_HEIGHT = Math.min(SCREEN_HEIGHT * 0.52, 450);
@@ -278,6 +279,127 @@ export default function MatchPairScreen() {
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [outfitName, setOutfitName] = useState("");
   const [savingOutfit, setSavingOutfit] = useState(false);
+
+  // Magic Outfit Deconstruct & Auto-Pair state
+  const [magicModalVisible, setMagicModalVisible] = useState(false);
+  const [deconstructing, setDeconstructing] = useState(false);
+  const [deconstructImageUri, setDeconstructImageUri] = useState<string | null>(null);
+  const [deconstructStep, setDeconstructStep] = useState<string>("Analyzing your outfit with AI...");
+  const scanLineAnim = useRef(new Animated.Value(0)).current;
+
+  // Animate scanning laser up and down
+  useEffect(() => {
+    if (deconstructing) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanLineAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scanLineAnim, {
+            toValue: 0,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      scanLineAnim.setValue(0);
+    }
+  }, [deconstructing]);
+
+  const handlePickMagicImage = async (useCamera: boolean) => {
+    try {
+      setMagicModalVisible(false);
+      const img = useCamera
+        ? await ImagePicker.openCamera({
+            width: 1200,
+            height: 1600,
+            cropping: false,
+            compressImageQuality: 0.8,
+          })
+        : await ImagePicker.openPicker({
+            width: 1200,
+            height: 1600,
+            cropping: false,
+            compressImageQuality: 0.8,
+          });
+
+      if (!img || !img.path) return;
+
+      setDeconstructImageUri(img.path);
+      setDeconstructing(true);
+      setDeconstructStep("🔍 Scanning full look with AI...");
+
+      const t1 = setTimeout(() => {
+        setDeconstructStep("🤖 Detecting top, bottom & accessories...");
+      }, 2500);
+      const t2 = setTimeout(() => {
+        setDeconstructStep("✂️ Extracting transparent cutouts...");
+      }, 5500);
+      const t3 = setTimeout(() => {
+        setDeconstructStep("🎨 Arranging matched pair on canvas...");
+      }, 9000);
+
+      const token = await storage.getItem("token");
+      if (!token) {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        setDeconstructing(false);
+        Alert.alert("Authentication", "Please login to use Magic Snap.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("image", {
+        uri: img.path,
+        name: img.filename || `look_${Date.now()}.jpg`,
+        type: img.mime || "image/jpeg",
+      } as any);
+
+      const res = await api.post("/api/outfits/deconstruct", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+        timeout: 120000,
+      });
+
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+
+      if (res.data?.success && Array.isArray(res.data.canvasGarments) && res.data.canvasGarments.length > 0) {
+        setCanvasGarments(res.data.canvasGarments);
+        setSelectedInstanceId(res.data.canvasGarments[0].instanceId);
+
+        if (Array.isArray(res.data.items) && res.data.items.length > 0) {
+          setAllItems((prev) => [...res.data.items, ...prev]);
+        }
+
+        setDeconstructing(false);
+        setDeconstructImageUri(null);
+
+        Alert.alert(
+          "✨ Wow! Outfit Extracted & Paired",
+          `Extracted ${res.data.totalExtracted || res.data.canvasGarments.length} items from your photo and arranged them as a pair on your canvas! You can resize, drag, or swap any items.`
+        );
+      } else {
+        setDeconstructing(false);
+        setDeconstructImageUri(null);
+        Alert.alert("No Clothes Found", "Could not detect distinct clothing items in this photo. Please try a clearer full-body photo.");
+      }
+    } catch (err: any) {
+      setDeconstructing(false);
+      setDeconstructImageUri(null);
+      if (err.code !== "E_PICKER_CANCELLED") {
+        console.error("Magic Deconstruct error:", err);
+        Alert.alert("Extraction Failed", err.response?.data?.message || err.message || "Failed to extract outfit. Please try again.");
+      }
+    }
+  };
 
   // Fetch all user wardrobe items
   useEffect(() => {
@@ -766,7 +888,16 @@ export default function MatchPairScreen() {
               </View>
             </View>
 
-            <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+              <TouchableOpacity
+                style={[styles.magicSnapBtn, { backgroundColor: "#8B5CF6" }]}
+                onPress={() => setMagicModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="sparkles" size={14} color="#FFFFFF" />
+                <Text style={styles.magicSnapBtnText}>Magic</Text>
+              </TouchableOpacity>
+
               {canvasGarments.length > 0 && (
                 <TouchableOpacity
                   onPress={handleClearCanvas}
@@ -813,14 +944,22 @@ export default function MatchPairScreen() {
             </View>
 
             {canvasGarments.length === 0 ? (
-              <View style={styles.emptyCanvasNotice} pointerEvents="none">
+              <View style={styles.emptyCanvasNotice} pointerEvents="box-none">
                 <Ionicons name="shirt-outline" size={42} color={colors.primary} style={{ opacity: 0.6 }} />
                 <Text style={[styles.emptyCanvasTitle, { color: colors.textPrimary }]}>
                   Your Canvas is Empty
                 </Text>
                 <Text style={[styles.emptyCanvasSub, { color: colors.textMuted }]}>
-                  Tap any shirt, pant, or jacket below to start pairing your outfit!
+                  Tap any clothes below, or use Magic Snap to auto-extract an outfit from a photo!
                 </Text>
+                <TouchableOpacity
+                  style={[styles.emptyCanvasMagicBtn, { backgroundColor: "#8B5CF6" }]}
+                  onPress={() => setMagicModalVisible(true)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                  <Text style={styles.emptyCanvasMagicText}>✨ Auto-Extract Outfit Photo</Text>
+                </TouchableOpacity>
               </View>
             ) : null}
 
@@ -1172,6 +1311,106 @@ export default function MatchPairScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
+              </View>
+            </View>
+          </Modal>
+
+          {/* ================= MAGIC SNAP OPTION MODAL ================= */}
+          <Modal
+            visible={magicModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setMagicModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.magicModalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.magicModalHeader}>
+                  <View style={[styles.magicIconBadge, { backgroundColor: "#8B5CF620" }]}>
+                    <Ionicons name="sparkles" size={26} color="#8B5CF6" />
+                  </View>
+                  <Text style={[styles.magicModalTitle, { color: colors.textPrimary }]}>
+                    ✨ Magic Outfit Deconstruct
+                  </Text>
+                  <Text style={[styles.magicModalSubtitle, { color: colors.textMuted }]}>
+                    Snap or upload a full-body picture. Our AI will automatically separate your shirt, pants, shoes & accessories and arrange them on this canvas!
+                  </Text>
+                </View>
+
+                <View style={styles.magicOptionCardsRow}>
+                  {/* Camera Option */}
+                  <TouchableOpacity
+                    style={[styles.magicOptionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => handlePickMagicImage(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="camera" size={30} color="#8B5CF6" />
+                    <Text style={[styles.magicOptionCardTitle, { color: colors.textPrimary }]}>Camera</Text>
+                    <Text style={[styles.magicOptionCardDesc, { color: colors.textMuted }]}>Take full-body photo</Text>
+                  </TouchableOpacity>
+
+                  {/* Gallery Option */}
+                  <TouchableOpacity
+                    style={[styles.magicOptionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => handlePickMagicImage(false)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="images" size={30} color="#EC4899" />
+                    <Text style={[styles.magicOptionCardTitle, { color: colors.textPrimary }]}>Gallery</Text>
+                    <Text style={[styles.magicOptionCardDesc, { color: colors.textMuted }]}>Choose from photos</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.magicCloseBtn, { borderColor: colors.border }]}
+                  onPress={() => setMagicModalVisible(false)}
+                >
+                  <Text style={[styles.magicCloseText, { color: colors.textMuted }]}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          {/* ================= SCANNING & DECONSTRUCTING PROGRESS MODAL ================= */}
+          <Modal
+            visible={deconstructing}
+            transparent
+            animationType="fade"
+            onRequestClose={() => {}}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.scanModalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                {deconstructImageUri ? (
+                  <View style={styles.scanImageContainer}>
+                    <Image source={{ uri: deconstructImageUri }} style={styles.scanImagePreview} />
+                    {/* Animated laser line */}
+                    <Animated.View
+                      style={[
+                        styles.scanLaser,
+                        {
+                          transform: [
+                            {
+                              translateY: scanLineAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 240],
+                              }),
+                            },
+                          ],
+                        },
+                      ]}
+                    />
+                  </View>
+                ) : (
+                  <ActivityIndicator size="large" color="#8B5CF6" style={{ marginVertical: 30 }} />
+                )}
+
+                <Text style={[styles.scanStatusTitle, { color: colors.textPrimary }]}>
+                  {deconstructStep}
+                </Text>
+                <Text style={[styles.scanStatusSubtitle, { color: colors.textMuted }]}>
+                  Please wait a few seconds while our AI extracts and pairs your outfit...
+                </Text>
+
+                <ActivityIndicator size="small" color="#8B5CF6" style={{ marginTop: 16 }} />
               </View>
             </View>
           </Modal>
@@ -1621,6 +1860,170 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "700",
+  },
+
+  /* Magic Snap Button */
+  magicSnapBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
+    gap: 4,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  magicSnapBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  emptyCanvasMagicBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    marginTop: 14,
+    gap: 8,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  emptyCanvasMagicText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  /* Magic Option Modal */
+  magicModalContent: {
+    width: "88%",
+    maxWidth: 380,
+    borderRadius: 24,
+    padding: 22,
+    alignItems: "center",
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  magicModalHeader: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  magicIconBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  magicModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  magicModalSubtitle: {
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  magicOptionCardsRow: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    marginBottom: 16,
+  },
+  magicOptionCard: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  magicOptionCardTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  magicOptionCardDesc: {
+    fontSize: 10,
+    textAlign: "center",
+  },
+  magicCloseBtn: {
+    width: "100%",
+    paddingVertical: 11,
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  magicCloseText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  /* Scanning / Deconstruct Laser Modal */
+  scanModalContent: {
+    width: "88%",
+    maxWidth: 380,
+    borderRadius: 24,
+    padding: 22,
+    alignItems: "center",
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  scanImageContainer: {
+    width: 200,
+    height: 250,
+    borderRadius: 16,
+    overflow: "hidden",
+    position: "relative",
+    marginBottom: 18,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  scanImagePreview: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  scanLaser: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: "#A855F7",
+    shadowColor: "#A855F7",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  scanStatusTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  scanStatusSubtitle: {
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 18,
   },
 });
 
